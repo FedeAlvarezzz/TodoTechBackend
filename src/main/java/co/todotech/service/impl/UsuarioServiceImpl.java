@@ -56,10 +56,9 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuario.setCedula(dto.cedula());
         usuario.setCorreo(dto.correo());
         usuario.setTelefono(dto.telefono());
-        usuario.setUsuario(dto.usuario());
+        usuario.setNombreUsuario(dto.nombreUsuario());  // Actualizado el nombre del método
         usuario.setContrasena(dto.contrasena());
         usuarioRepository.save(usuario);
-
     }
 
     @Override

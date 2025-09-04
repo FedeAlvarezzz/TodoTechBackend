@@ -33,7 +33,7 @@ public class Usuario {
     private String telefono;
 
     @Column(name = "usuario", nullable = false, length = 60)
-    private String usuario;
+    private String nombreUsuario;  // Cambiado de 'usuario' a 'nombreUsuario'
 
     @Column(name = "contrasena", nullable = false, length = 255)
     private String contrasena;
