@@ -33,7 +33,7 @@ public class Usuario {
     private String telefono;
 
     @Column(name = "usuario", nullable = false, length = 60)
-    private String nombreUsuario;  // Cambiado de 'usuario' a 'nombreUsuario'
+    private String nombreUsuario;
 
     @Column(name = "contrasena", nullable = false, length = 255)
     private String contrasena;
@@ -47,5 +47,6 @@ public class Usuario {
     private LocalDateTime fechaCreacion;
 
     @Column(name = "estado", nullable = false)
+    @Builder.Default  // ← ESTA ES LA SOLUCIÓN
     private boolean estado = false;
 }

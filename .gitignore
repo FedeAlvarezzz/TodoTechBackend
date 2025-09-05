@@ -35,3 +35,12 @@ out/
 
 ### VS Code ###
 .vscode/
+
+
+### Logs ###
+logs/
+*.log
+
+### Sistema operativo ###
+.DS_Store
+Thumbs.db

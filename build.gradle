@@ -40,6 +40,9 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
+    // Integración Lombok + MapStruct (CRUCIAL)
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     runtimeOnly 'org.postgresql:postgresql'
@@ -51,4 +54,13 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// Configuración para que MapStruct funcione correctamente con Lombok
+tasks.withType(JavaCompile) {
+    options.compilerArgs = [
+            '-Amapstruct.suppressGeneratorTimestamp=true',
+            '-Amapstruct.defaultComponentModel=spring',
+            '-Amapstruct.unmappedTargetPolicy=IGNORE'
+    ]
 }
