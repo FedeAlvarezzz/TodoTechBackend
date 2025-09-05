@@ -1,6 +1,7 @@
 package co.todotech.service.impl;
 
 import co.todotech.mapper.UsuarioMapper;
+import co.todotech.model.dto.usuario.LoginResponse;
 import co.todotech.model.dto.usuario.UsuarioDto;
 import co.todotech.model.entities.Usuario;
 import co.todotech.repository.UsuarioRepository;
@@ -9,6 +10,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -27,7 +31,64 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     public UsuarioDto obtenerUsuarioPorCedula(String cedula) throws Exception {
-        return null;
+        Usuario usuario = usuarioRepository.findByCedula(cedula)
+                .orElseThrow(() -> new Exception("Usuario no encontrado con cédula: " + cedula));
+        return usuarioMapper.toDto(usuario);
+    }
+
+    @Override
+    public List<UsuarioDto> obtenerTodosLosUsuarios() {
+        return usuarioRepository.findAll().stream()
+                .map(usuarioMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioDto> obtenerUsuariosActivos() {
+        return usuarioRepository.findByEstado(true).stream()
+                .map(usuarioMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioDto> obtenerUsuariosInactivos() {
+        return usuarioRepository.findByEstado(false).stream()
+                .map(usuarioMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public LoginResponse login(String nombreUsuario, String contrasena) throws Exception {
+        Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario)
+                .orElseThrow(() -> new Exception("Usuario no encontrado"));
+
+        if (!usuario.getContrasena().equals(contrasena)) {
+            throw new Exception("Contraseña incorrecta");
+        }
+
+        if (!usuario.isEstado()) {
+            throw new Exception("Usuario inactivo. Contacte al administrador");
+        }
+
+        // Crear respuesta con información del usuario
+        return new LoginResponse(
+                "Login exitoso",
+                usuario.getTipoUsuario(),
+                usuario.getNombre(),
+                usuario.getNombreUsuario()
+        );
+    }
+
+    @Override
+    @Transactional
+    public void cambiarEstadoUsuario(Long id, boolean estado) throws Exception {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new Exception("Usuario no encontrado con ID: " + id));
+
+        usuario.setEstado(estado);
+        usuarioRepository.save(usuario);
+
+        log.info("Estado del usuario {} cambiado a: {}", id, estado ? "ACTIVO" : "INACTIVO");
     }
 
     @Override
@@ -35,13 +96,17 @@ public class UsuarioServiceImpl implements UsuarioService {
     public void crearUsuario(UsuarioDto dto) throws Exception {
         log.info("Creando usuario: {}", dto.getNombreUsuario());
 
-        // Verificar si ya existe usuario con cédula o correo
+        // Verificar si ya existe usuario con cédula, correo o nombre de usuario
         if (usuarioRepository.existsByCedula(dto.getCedula())) {
             throw new Exception("Ya existe un usuario con la cédula: " + dto.getCedula());
         }
 
         if (usuarioRepository.existsByCorreo(dto.getCorreo())) {
             throw new Exception("Ya existe un usuario con el correo: " + dto.getCorreo());
+        }
+
+        if (usuarioRepository.existsByNombreUsuario(dto.getNombreUsuario())) {
+            throw new Exception("Ya existe un usuario con el nombre de usuario: " + dto.getNombreUsuario());
         }
 
         Usuario usuario = usuarioMapper.toEntity(dto);
@@ -68,6 +133,11 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new Exception("Ya existe otro usuario con el correo: " + dto.getCorreo());
         }
 
+        if (!usuario.getNombreUsuario().equals(dto.getNombreUsuario()) &&
+                usuarioRepository.existsByNombreUsuarioAndIdNot(dto.getNombreUsuario(), id)) {
+            throw new Exception("Ya existe otro usuario con el nombre de usuario: " + dto.getNombreUsuario());
+        }
+
         usuarioMapper.updateUsuarioFromDto(dto, usuario);
         usuarioRepository.save(usuario);
     }
@@ -78,7 +148,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new Exception("Usuario no encontrado con ID: " + id));
 
-        usuarioRepository.delete(usuario);  // Eliminación física
+        usuarioRepository.delete(usuario);
         log.info("Usuario eliminado físicamente: {}", id);
     }
 }
