@@ -10,14 +10,15 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults())
+                .cors(Customizer.withDefaults()) // habilita CORS y usa tu CorsConfig
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/public/**").permitAll()
-                        // Si vas a usar permisos Auth0 (p. ej. "admin:all"), puedes exigirlos con authorities:
+                        .requestMatchers("/usuarios/login").permitAll()      //cambio
                         .requestMatchers("/api/admin/**").hasAuthority("admin:all")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
@@ -25,9 +26,10 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt
                                 .jwtAuthenticationConverter(Auth0AuthoritiesConverter.jwtAuthConverter())
-                                .decoder(Auth0JwtDecoder.decoder()) // incluye validación de audience
+                                .decoder(Auth0JwtDecoder.decoder())
                         )
                 );
+
         return http.build();
     }
 }
