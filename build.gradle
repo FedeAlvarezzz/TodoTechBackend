@@ -53,9 +53,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-tasks.named('test') {
-    useJUnitPlatform()
-}
+
 
 // Configuración para que MapStruct funcione correctamente con Lombok
 tasks.withType(JavaCompile) {
