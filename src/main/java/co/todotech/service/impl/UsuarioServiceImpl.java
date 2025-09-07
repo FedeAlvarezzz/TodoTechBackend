@@ -7,6 +7,7 @@ import co.todotech.model.dto.usuario.UsuarioDto;
 import co.todotech.model.entities.Usuario;
 import co.todotech.repository.UsuarioRepository;
 import co.todotech.service.UsuarioService;
+import co.todotech.utils.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,6 +29,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioMapper usuarioMapper;
     private final UsuarioRepository usuarioRepository;
+    private final EmailService emailService;
 
     @Override
     public UsuarioDto obtenerUsuarioPorId(Long id) throws Exception {
@@ -75,6 +79,11 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new Exception("Usuario inactivo. Contacte al administrador");
         }
 
+        // Notificar por email si es administrador
+        if (usuario.getTipoUsuario().name().equals("ADMIN")) {
+            notificarIngresoAdmin(usuario);
+        }
+
         // Crear respuesta con información del usuario
         return new LoginResponse(
                 "Login exitoso",
@@ -82,6 +91,25 @@ public class UsuarioServiceImpl implements UsuarioService {
                 usuario.getNombre(),
                 usuario.getNombreUsuario()
         );
+    }
+
+    private void notificarIngresoAdmin(Usuario admin) {
+        try {
+            String fechaHora = LocalDateTime.now()
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+            emailService.enviarNotificacionAdminLogin(
+                    admin.getCorreo(),
+                    admin.getNombre(),
+                    fechaHora
+            );
+
+            log.info("Notificación de ingreso enviada al admin: {}", admin.getNombreUsuario());
+        } catch (Exception e) {
+            log.error("Error al enviar notificación de ingreso al admin {}: {}",
+                    admin.getNombreUsuario(), e.getMessage());
+            // No lanzamos excepción para no afectar el flujo de login
+        }
     }
 
     @Override

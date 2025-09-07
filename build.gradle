@@ -33,6 +33,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
+    // NUEVA DEPENDENCIA: Spring Mail
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
     // MapStruct
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
@@ -48,12 +51,19 @@ dependencies {
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     runtimeOnly 'org.postgresql:postgresql'
 
+    // TEST DEPENDENCIES - AÑADIDAS
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.12.0' // ← NUEVA
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2' // ← NUEVA
+
+    // Lombok para tests - CRUCIAL para @InjectMocks
+    testCompileOnly 'org.projectlombok:lombok' // ← NUEVA
+    testAnnotationProcessor 'org.projectlombok:lombok' // ← NUEVA
+
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2' // ← NUEVA
 }
-
-
 
 // Configuración para que MapStruct funcione correctamente con Lombok
 tasks.withType(JavaCompile) {
@@ -62,4 +72,12 @@ tasks.withType(JavaCompile) {
             '-Amapstruct.defaultComponentModel=spring',
             '-Amapstruct.unmappedTargetPolicy=IGNORE'
     ]
+}
+
+// Configuración para tests
+tasks.named('test') {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
