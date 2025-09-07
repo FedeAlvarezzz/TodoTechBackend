@@ -1,5 +1,5 @@
 # Etapa de build (Gradle)
-FROM gradle:latest-jdk21 AS build
+FROM gradle:latest AS build
 WORKDIR /app
 COPY . .
 RUN gradle bootJar --no-daemon
