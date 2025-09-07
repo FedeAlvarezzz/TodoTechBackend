@@ -20,6 +20,6 @@ public interface UsuarioMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "fechaCreacion", ignore = true)
-    @Mapping(target = "estado", ignore = true)
+
     void updateUsuarioFromDto(UsuarioDto usuarioDto, @MappingTarget Usuario usuario);
 }

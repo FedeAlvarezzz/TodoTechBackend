@@ -139,6 +139,10 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
 
         usuarioMapper.updateUsuarioFromDto(dto, usuario);
+
+        // Actualizar el estado manualmente si lo estás ignorando en el mapper
+        usuario.setEstado(dto.getEstado()); // ← Añade esta línea
+
         usuarioRepository.save(usuario);
     }
 
