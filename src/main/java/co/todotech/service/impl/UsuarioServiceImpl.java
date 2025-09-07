@@ -1,6 +1,7 @@
 package co.todotech.service.impl;
 
 import co.todotech.mapper.UsuarioMapper;
+import co.todotech.model.dto.MensajeDto;
 import co.todotech.model.dto.usuario.LoginResponse;
 import co.todotech.model.dto.usuario.UsuarioDto;
 import co.todotech.model.entities.Usuario;
@@ -8,8 +9,12 @@ import co.todotech.repository.UsuarioRepository;
 import co.todotech.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -115,7 +120,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuarioRepository.save(usuario);
         log.info("Usuario creado exitosamente: {}", usuario.getNombreUsuario());
     }
-
     @Override
     @Transactional
     public void actualizarUsuario(Long id, UsuarioDto dto) throws Exception {
@@ -139,6 +143,10 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
 
         usuarioMapper.updateUsuarioFromDto(dto, usuario);
+
+        // Actualizar el estado manualmente si lo estás ignorando en el mapper
+        usuario.setEstado(dto.getEstado()); // ← Añade esta línea
+
         usuarioRepository.save(usuario);
     }
 

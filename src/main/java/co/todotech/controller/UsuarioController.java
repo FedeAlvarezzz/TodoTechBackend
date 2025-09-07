@@ -64,10 +64,11 @@ public class UsuarioController {
     }
 
     // Cambiar estado de usuario (activar/desactivar)
+    // Cambiar estado de usuario (activar/desactivar)
     @PatchMapping("/{id}/estado")
     public ResponseEntity<MensajeDto<String>> cambiarEstadoUsuario(
             @PathVariable("id") Long id,
-            @RequestParam boolean estado) {
+            @RequestParam("estado") boolean estado) {  // ← Agrega el nombre explícito aquí
         try {
             usuarioService.cambiarEstadoUsuario(id, estado);
             String mensaje = estado ? "Usuario activado exitosamente" : "Usuario desactivado exitosamente";
