@@ -13,7 +13,5 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Copia el JAR construido
-COPY --from=build /app/build/libs/*.jar app.jar
-
-# Forzamos que Spring use el puerto de Render
+COPY --from=build /app/build/libs/*.jar /app.jar
 ENTRYPOINT ["java","-Dserver.port=${PORT}","-jar","/app.jar"]
