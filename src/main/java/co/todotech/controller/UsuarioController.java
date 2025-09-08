@@ -3,11 +3,14 @@ package co.todotech.controller;
 import co.todotech.model.dto.MensajeDto;
 import co.todotech.model.dto.usuario.LoginResponse;
 import co.todotech.model.dto.usuario.UsuarioDto;
+import co.todotech.model.enums.TipoUsuario;
 import co.todotech.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -116,6 +119,99 @@ public class UsuarioController {
         try {
             usuarioService.eliminarUsuario(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Usuario eliminado exitosamente"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage()));
+        }
+    }
+
+
+    // Obtener usuarios por tipo
+    @GetMapping("/tipo/{tipoUsuario}")
+    public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosPorTipo(
+            @PathVariable("tipoUsuario") TipoUsuario tipoUsuario) {
+        try {
+            List<UsuarioDto> usuarios = usuarioService.obtenerUsuariosPorTipo(tipoUsuario);
+            return ResponseEntity.ok(new MensajeDto<>(false,
+                    "Usuarios del tipo " + tipoUsuario + " obtenidos exitosamente", usuarios));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    // Buscar usuarios por nombre (búsqueda parcial)
+    @GetMapping("/buscar/nombre")
+    public ResponseEntity<MensajeDto<List<UsuarioDto>>> buscarUsuariosPorNombre(
+            @RequestParam("nombre") String nombre) {
+        try {
+            List<UsuarioDto> usuarios = usuarioService.buscarUsuariosPorNombre(nombre);
+            return ResponseEntity.ok(new MensajeDto<>(false,
+                    "Usuarios encontrados con el nombre: " + nombre, usuarios));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    // Buscar usuarios por cédula (búsqueda parcial)
+    @GetMapping("/buscar/cedula")
+    public ResponseEntity<MensajeDto<List<UsuarioDto>>> buscarUsuariosPorCedula(
+            @RequestParam("cedula") String cedula) {
+        try {
+            List<UsuarioDto> usuarios = usuarioService.buscarUsuariosPorCedula(cedula);
+            return ResponseEntity.ok(new MensajeDto<>(false,
+                    "Usuarios encontrados con la cédula: " + cedula, usuarios));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    // Obtener usuarios por rango de fechas
+    @GetMapping("/fecha-creacion")
+    public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosPorFechaCreacion(
+            @RequestParam("fechaInicio") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
+            @RequestParam("fechaFin") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin) {
+        try {
+            List<UsuarioDto> usuarios = usuarioService.obtenerUsuariosPorFechaCreacion(fechaInicio, fechaFin);
+            return ResponseEntity.ok(new MensajeDto<>(false,
+                    "Usuarios encontrados en el rango de fechas", usuarios));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    // Obtener usuarios creados después de una fecha
+    @GetMapping("/fecha-creacion/despues")
+    public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosCreadosDespuesDe(
+            @RequestParam("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fecha) {
+        try {
+            List<UsuarioDto> usuarios = usuarioService.obtenerUsuariosCreadosDespuesDe(fecha);
+            return ResponseEntity.ok(new MensajeDto<>(false,
+                    "Usuarios creados después de " + fecha, usuarios));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    // Obtener usuarios creados antes de una fecha
+    @GetMapping("/fecha-creacion/antes")
+    public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosCreadosAntesDe(
+            @RequestParam("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fecha) {
+        try {
+            List<UsuarioDto> usuarios = usuarioService.obtenerUsuariosCreadosAntesDe(fecha);
+            return ResponseEntity.ok(new MensajeDto<>(false,
+                    "Usuarios creados antes de " + fecha, usuarios));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    // Recordatorio de contraseña con código de verificación
+    @PostMapping("/recordar-contrasena")
+    public ResponseEntity<MensajeDto<String>> solicitarRecordatorioContrasena(
+            @RequestParam("correo") String correo) {
+        try {
+            usuarioService.solicitarRecordatorioContrasena(correo);
+            return ResponseEntity.ok(new MensajeDto<>(false,
+                    "Se ha enviado un recordatorio de contraseña a tu correo electrónico"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage()));
         }

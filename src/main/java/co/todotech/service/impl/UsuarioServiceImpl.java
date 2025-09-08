@@ -1,25 +1,23 @@
 package co.todotech.service.impl;
 
 import co.todotech.mapper.UsuarioMapper;
-import co.todotech.model.dto.MensajeDto;
 import co.todotech.model.dto.usuario.LoginResponse;
 import co.todotech.model.dto.usuario.UsuarioDto;
 import co.todotech.model.entities.Usuario;
+import co.todotech.model.enums.TipoUsuario;
 import co.todotech.repository.UsuarioRepository;
 import co.todotech.service.UsuarioService;
-import co.todotech.utils.EmailService;
+
+import co.todotech.utils.impl.EmailServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -29,7 +27,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioMapper usuarioMapper;
     private final UsuarioRepository usuarioRepository;
-    private final EmailService emailService;
+    private final EmailServiceImpl emailService;
 
     @Override
     public UsuarioDto obtenerUsuarioPorId(Long id) throws Exception {
@@ -186,5 +184,128 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         usuarioRepository.delete(usuario);
         log.info("Usuario eliminado físicamente: {}", id);
+    }
+
+
+    @Override
+    public List<UsuarioDto> obtenerUsuariosPorTipo(TipoUsuario tipoUsuario) throws Exception {
+        List<Usuario> usuarios = usuarioRepository.findByTipoUsuario(tipoUsuario);
+        if (usuarios.isEmpty()) {
+            throw new Exception("No se encontraron usuarios del tipo: " + tipoUsuario);
+        }
+        return usuarios.stream()
+                .map(usuarioMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioDto> buscarUsuariosPorNombre(String nombre) throws Exception {
+        List<Usuario> usuarios = usuarioRepository.findByNombreContainingIgnoreCase(nombre);
+        if (usuarios.isEmpty()) {
+            throw new Exception("No se encontraron usuarios con el nombre: " + nombre);
+        }
+        return usuarios.stream()
+                .map(usuarioMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioDto> buscarUsuariosPorCedula(String cedula) throws Exception {
+        List<Usuario> usuarios = usuarioRepository.findByCedulaContaining(cedula);
+        if (usuarios.isEmpty()) {
+            throw new Exception("No se encontraron usuarios con la cédula: " + cedula);
+        }
+        return usuarios.stream()
+                .map(usuarioMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioDto> obtenerUsuariosPorFechaCreacion(LocalDateTime fechaInicio, LocalDateTime fechaFin) throws Exception {
+        List<Usuario> usuarios = usuarioRepository.findByFechaCreacionBetween(fechaInicio, fechaFin);
+        if (usuarios.isEmpty()) {
+            throw new Exception("No se encontraron usuarios en el rango de fechas especificado");
+        }
+        return usuarios.stream()
+                .map(usuarioMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioDto> obtenerUsuariosCreadosDespuesDe(LocalDateTime fecha) throws Exception {
+        List<Usuario> usuarios = usuarioRepository.findByFechaCreacionAfter(fecha);
+        if (usuarios.isEmpty()) {
+            throw new Exception("No se encontraron usuarios creados después de: " + fecha);
+        }
+        return usuarios.stream()
+                .map(usuarioMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioDto> obtenerUsuariosCreadosAntesDe(LocalDateTime fecha) throws Exception {
+        List<Usuario> usuarios = usuarioRepository.findByFechaCreacionBefore(fecha);
+        if (usuarios.isEmpty()) {
+            throw new Exception("No se encontraron usuarios creados antes de: " + fecha);
+        }
+        return usuarios.stream()
+                .map(usuarioMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+
+    @Override
+    @Transactional
+    public void solicitarRecordatorioContrasena(String correo) throws Exception {
+        log.info("📧 Solicitando recordatorio de contraseña para el correo: {}", correo);
+
+        // Definir los tipos de usuario permitidos (VENDEDOR, CAJERO, DESPACHADOR)
+        List<TipoUsuario> tiposPermitidos = List.of(
+                TipoUsuario.VENDEDOR,
+                TipoUsuario.CAJERO,
+                TipoUsuario.DESPACHADOR
+        );
+
+        // Buscar usuario por correo
+        Optional<Usuario> usuarioOpt = usuarioRepository.findByCorreo(correo);
+
+        if (usuarioOpt.isEmpty()) {
+            throw new Exception("❌ No estás registrado en el sistema");
+        }
+
+        Usuario usuario = usuarioOpt.get();
+
+        // Verificar que sea de los tipos permitidos
+        if (!tiposPermitidos.contains(usuario.getTipoUsuario())) {
+            throw new Exception("❌ No tienes permisos para esta operación. Solo disponible para vendedores, cajeros y despachadores");
+        }
+
+        if (!usuario.isEstado()) {
+            throw new Exception("❌ Tu cuenta está inactiva. Contacta al administrador");
+        }
+
+        // Generar código de verificación
+        String codigoVerificacion = generarCodigoVerificacion();
+
+        // Enviar email con el recordatorio de contraseña
+        try {
+            emailService.enviarRecordatorioContrasena(
+                    usuario.getCorreo(),
+                    usuario.getNombre(),
+                    usuario.getContrasena(),
+                    codigoVerificacion
+            );
+
+            log.info("✅ Recordatorio de contraseña enviado exitosamente a: {}", correo);
+
+        } catch (Exception e) {
+            log.error("❌ Error al enviar recordatorio de contraseña: {}", e.getMessage());
+            throw new Exception("Error al enviar el recordatorio. Intenta nuevamente.");
+        }
+    }
+
+    private String generarCodigoVerificacion() {
+        // Generar un código de 6 dígitos
+        return String.format("%06d", (int) (Math.random() * 1000000));
     }
 }
