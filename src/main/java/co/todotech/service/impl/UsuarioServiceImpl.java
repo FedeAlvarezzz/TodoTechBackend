@@ -284,16 +284,13 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new Exception("❌ Tu cuenta está inactiva. Contacta al administrador");
         }
 
-        // Generar código de verificación
-        String codigoVerificacion = generarCodigoVerificacion();
-
         // Enviar email con el recordatorio de contraseña
         try {
             emailService.enviarRecordatorioContrasena(
-                    usuario.getCorreo(),
-                    usuario.getNombre(),
-                    usuario.getContrasena(),
-                    codigoVerificacion
+                    usuario.getCorreo(),          // destinatario
+                    usuario.getNombre(),          // nombre completo
+                    usuario.getNombreUsuario(),   // nombre de usuario ← NUEVO
+                    usuario.getContrasena()       // contraseña
             );
 
             log.info("✅ Recordatorio de contraseña enviado exitosamente a: {}", correo);

@@ -127,7 +127,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void enviarRecordatorioContrasena(String destinatario, String nombre, String contrasena, String codigoVerificacion) {
+    public void enviarRecordatorioContrasena(String destinatario, String nombre, String nombreUsuario, String contrasena) {
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -174,15 +174,15 @@ public class EmailServiceImpl implements EmailService {
                     + "                <h3 style='text-align: center; margin-bottom: 20px;'>🎯 Tus Credenciales de Acceso</h3>"
                     + "                "
                     + "                <div class='credential-item'>"
-                    + "                    <span class='icon'>📧</span>"
-                    + "                    <strong>Correo Electrónico:</strong><br>"
-                    + "                    <span style='font-size: 16px;'>" + destinatario + "</span>"
+                    + "                    <span class='icon'>👤</span>"
+                    + "                    <strong>Nombre Completo:</strong><br>"
+                    + "                    <span style='font-size: 16px;'>" + nombre + "</span>"
                     + "                </div>"
                     + "                "
                     + "                <div class='credential-item'>"
-                    + "                    <span class='icon'>👤</span>"
+                    + "                    <span class='icon'>🎯</span>"
                     + "                    <strong>Nombre de Usuario:</strong><br>"
-                    + "                    <span style='font-size: 16px;'>" + nombre + "</span>"
+                    + "                    <span style='font-size: 16px; font-weight: bold;'>" + nombreUsuario + "</span>"
                     + "                </div>"
                     + "                "
                     + "                <div class='credential-item'>"
@@ -219,7 +219,6 @@ public class EmailServiceImpl implements EmailService {
             throw new RuntimeException("Error al enviar el email de recordatorio: " + e.getMessage());
         }
     }
-
     private String convertirTextoAHtml(String texto) {
         // Conversión básica de texto plano a HTML
         return "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"
