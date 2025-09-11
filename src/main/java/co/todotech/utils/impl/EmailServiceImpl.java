@@ -28,7 +28,7 @@ public class EmailServiceImpl implements EmailService {
             helper.setTo(to);
             helper.setSubject(subject);
 
-            // Convertir texto plano a HTML básico
+            // Convertir texto plano a HTML básico|
             String htmlContent = convertirTextoAHtml(text);
             helper.setText(htmlContent, true);
 
