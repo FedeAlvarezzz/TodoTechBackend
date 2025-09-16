@@ -36,6 +36,9 @@ dependencies {
     // NUEVA DEPENDENCIA: Spring Mail
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 
+    // JWT Auth0 - PARA TOKENS JWT
+    implementation 'com.auth0:java-jwt:4.4.0'
+
     // MapStruct
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
@@ -43,6 +46,8 @@ dependencies {
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+
+
 
     // Integración Lombok + MapStruct (CRUCIAL)
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'

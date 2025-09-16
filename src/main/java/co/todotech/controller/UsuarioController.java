@@ -8,6 +8,7 @@ import co.todotech.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -20,7 +21,7 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
-    // Login
+    // Login - PÚBLICO
     @PostMapping("/login")
     public ResponseEntity<MensajeDto<LoginResponse>> login(
             @RequestParam("nombreUsuario") String nombreUsuario,
@@ -33,56 +34,9 @@ public class UsuarioController {
         }
     }
 
-    // Obtener todos los usuarios
-    @GetMapping
-    public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerTodosLosUsuarios() {
-        try {
-            List<UsuarioDto> usuarios = usuarioService.obtenerTodosLosUsuarios();
-            return ResponseEntity.ok(new MensajeDto<>(false, "Usuarios obtenidos exitosamente", usuarios));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
-        }
-    }
-
-    // Obtener usuarios activos
-    @GetMapping("/activos")
-    public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosActivos() {
-        try {
-            List<UsuarioDto> usuarios = usuarioService.obtenerUsuariosActivos();
-            return ResponseEntity.ok(new MensajeDto<>(false, "Usuarios activos obtenidos exitosamente", usuarios));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
-        }
-    }
-
-    // Obtener usuarios inactivos
-    @GetMapping("/inactivos")
-    public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosInactivos() {
-        try {
-            List<UsuarioDto> usuarios = usuarioService.obtenerUsuariosInactivos();
-            return ResponseEntity.ok(new MensajeDto<>(false, "Usuarios inactivos obtenidos exitosamente", usuarios));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
-        }
-    }
-
-    // Cambiar estado de usuario (activar/desactivar)
-    // Cambiar estado de usuario (activar/desactivar)
-    @PatchMapping("/{id}/estado")
-    public ResponseEntity<MensajeDto<String>> cambiarEstadoUsuario(
-            @PathVariable("id") Long id,
-            @RequestParam("estado") boolean estado) {  // ← Agrega el nombre explícito aquí
-        try {
-            usuarioService.cambiarEstadoUsuario(id, estado);
-            String mensaje = estado ? "Usuario activado exitosamente" : "Usuario desactivado exitosamente";
-            return ResponseEntity.ok(new MensajeDto<>(false, mensaje));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage()));
-        }
-    }
-
-    // Endpoints existentes (mantener)
+    // Crear usuario - SOLO ADMIN
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MensajeDto<String>> crearUsuario(@RequestBody UsuarioDto dto) {
         try {
             usuarioService.crearUsuario(dto);
@@ -92,7 +46,60 @@ public class UsuarioController {
         }
     }
 
+    // Obtener todos los usuarios - SOLO ADMIN
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerTodosLosUsuarios() {
+        try {
+            List<UsuarioDto> usuarios = usuarioService.obtenerTodosLosUsuarios();
+            return ResponseEntity.ok(new MensajeDto<>(false, "Usuarios obtenidos exitosamente", usuarios));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    // Obtener usuarios activos - SOLO ADMIN
+    @GetMapping("/activos")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosActivos() {
+        try {
+            List<UsuarioDto> usuarios = usuarioService.obtenerUsuariosActivos();
+            return ResponseEntity.ok(new MensajeDto<>(false, "Usuarios activos obtenidos exitosamente", usuarios));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    // Obtener usuarios inactivos - SOLO ADMIN
+    @GetMapping("/inactivos")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosInactivos() {
+        try {
+            List<UsuarioDto> usuarios = usuarioService.obtenerUsuariosInactivos();
+            return ResponseEntity.ok(new MensajeDto<>(false, "Usuarios inactivos obtenidos exitosamente", usuarios));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    // Cambiar estado de usuario - SOLO ADMIN
+    @PatchMapping("/{id}/estado")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<MensajeDto<String>> cambiarEstadoUsuario(
+            @PathVariable("id") Long id,
+            @RequestParam("estado") boolean estado) {
+        try {
+            usuarioService.cambiarEstadoUsuario(id, estado);
+            String mensaje = estado ? "Usuario activado exitosamente" : "Usuario desactivado exitosamente";
+            return ResponseEntity.ok(new MensajeDto<>(false, mensaje));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage()));
+        }
+    }
+
+    // Obtener usuario por ID - AUTENTICADO (propio usuario o admin)
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MensajeDto<UsuarioDto>> obtenerUsuarioPorId(@PathVariable("id") Long id) {
         try {
             UsuarioDto usuarioDto = usuarioService.obtenerUsuarioPorId(id);
@@ -102,7 +109,9 @@ public class UsuarioController {
         }
     }
 
+    // Actualizar usuario - AUTENTICADO (propio usuario o admin)
     @PutMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MensajeDto<String>> actualizarUsuario(
             @PathVariable("id") Long id,
             @RequestBody UsuarioDto dto) {
@@ -114,7 +123,9 @@ public class UsuarioController {
         }
     }
 
+    // Eliminar usuario - SOLO ADMIN
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MensajeDto<String>> eliminarUsuario(@PathVariable("id") Long id) {
         try {
             usuarioService.eliminarUsuario(id);
@@ -124,9 +135,9 @@ public class UsuarioController {
         }
     }
 
-
-    // Obtener usuarios por tipo
+    // Obtener usuarios por tipo - SOLO ADMIN
     @GetMapping("/tipo/{tipoUsuario}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosPorTipo(
             @PathVariable("tipoUsuario") TipoUsuario tipoUsuario) {
         try {
@@ -138,8 +149,9 @@ public class UsuarioController {
         }
     }
 
-    // Buscar usuarios por nombre (búsqueda parcial)
+    // Buscar usuarios por nombre - SOLO ADMIN
     @GetMapping("/buscar/nombre")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MensajeDto<List<UsuarioDto>>> buscarUsuariosPorNombre(
             @RequestParam("nombre") String nombre) {
         try {
@@ -151,8 +163,9 @@ public class UsuarioController {
         }
     }
 
-    // Buscar usuarios por cédula (búsqueda parcial)
+    // Buscar usuarios por cédula - SOLO ADMIN
     @GetMapping("/buscar/cedula")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MensajeDto<List<UsuarioDto>>> buscarUsuariosPorCedula(
             @RequestParam("cedula") String cedula) {
         try {
@@ -164,8 +177,9 @@ public class UsuarioController {
         }
     }
 
-    // Obtener usuarios por rango de fechas
+    // Obtener usuarios por rango de fechas - SOLO ADMIN
     @GetMapping("/fecha-creacion")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosPorFechaCreacion(
             @RequestParam("fechaInicio") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
             @RequestParam("fechaFin") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin) {
@@ -178,8 +192,9 @@ public class UsuarioController {
         }
     }
 
-    // Obtener usuarios creados después de una fecha
+    // Obtener usuarios creados después de una fecha - SOLO ADMIN
     @GetMapping("/fecha-creacion/despues")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosCreadosDespuesDe(
             @RequestParam("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fecha) {
         try {
@@ -191,8 +206,9 @@ public class UsuarioController {
         }
     }
 
-    // Obtener usuarios creados antes de una fecha
+    // Obtener usuarios creados antes de una fecha - SOLO ADMIN
     @GetMapping("/fecha-creacion/antes")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MensajeDto<List<UsuarioDto>>> obtenerUsuariosCreadosAntesDe(
             @RequestParam("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fecha) {
         try {
@@ -204,7 +220,7 @@ public class UsuarioController {
         }
     }
 
-    // Recordatorio de contraseña con código de verificación
+    // Recordatorio de contraseña - PÚBLICO
     @PostMapping("/recordar-contrasena")
     public ResponseEntity<MensajeDto<String>> solicitarRecordatorioContrasena(
             @RequestParam("correo") String correo) {

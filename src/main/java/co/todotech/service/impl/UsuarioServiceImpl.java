@@ -6,11 +6,13 @@ import co.todotech.model.dto.usuario.UsuarioDto;
 import co.todotech.model.entities.Usuario;
 import co.todotech.model.enums.TipoUsuario;
 import co.todotech.repository.UsuarioRepository;
+import co.todotech.security.JwtUtil;
 import co.todotech.service.UsuarioService;
 
 import co.todotech.utils.impl.EmailServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,46 @@ public class UsuarioServiceImpl implements UsuarioService {
     private final UsuarioMapper usuarioMapper;
     private final UsuarioRepository usuarioRepository;
     private final EmailServiceImpl emailService;
+    private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    public LoginResponse login(String nombreUsuario, String contrasena) throws Exception {
+        Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario)
+                .orElseThrow(() -> new Exception("Usuario no encontrado"));
+
+        // Verificar contraseña con PasswordEncoder
+        if (!passwordEncoder.matches(contrasena, usuario.getContrasena())) {
+            throw new Exception("Contraseña incorrecta");
+        }
+
+        if (!usuario.isEstado()) {
+            throw new Exception("Usuario inactivo. Contacte al administrador");
+        }
+
+        // Generar token JWT
+        String token = jwtUtil.generateToken(
+                usuario.getNombreUsuario(),
+                usuario.getId(),
+                usuario.getTipoUsuario().name()
+        );
+
+        // Notificar por email si es administrador
+        if (usuario.getTipoUsuario().name().equals("ADMIN")) {
+            notificarIngresoAdmin(usuario);
+        }
+
+        // Crear respuesta con token JWT
+        return new LoginResponse(
+                token,
+                "Bearer",
+                usuario.getId(),
+                usuario.getNombreUsuario(),
+                usuario.getNombre(),
+                usuario.getTipoUsuario(),
+                "Login exitoso"
+        );
+    }
 
     @Override
     public UsuarioDto obtenerUsuarioPorId(Long id) throws Exception {
@@ -64,32 +106,6 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public LoginResponse login(String nombreUsuario, String contrasena) throws Exception {
-        Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario)
-                .orElseThrow(() -> new Exception("Usuario no encontrado"));
-
-        if (!usuario.getContrasena().equals(contrasena)) {
-            throw new Exception("Contraseña incorrecta");
-        }
-
-        if (!usuario.isEstado()) {
-            throw new Exception("Usuario inactivo. Contacte al administrador");
-        }
-
-        // Notificar por email si es administrador
-        if (usuario.getTipoUsuario().name().equals("ADMIN")) {
-            notificarIngresoAdmin(usuario);
-        }
-
-        // Crear respuesta con información del usuario
-        return new LoginResponse(
-                "Login exitoso",
-                usuario.getTipoUsuario(),
-                usuario.getNombre(),
-                usuario.getNombreUsuario()
-        );
-    }
 
     private void notificarIngresoAdmin(Usuario admin) {
         try {
@@ -143,9 +159,15 @@ public class UsuarioServiceImpl implements UsuarioService {
         Usuario usuario = usuarioMapper.toEntity(dto);
         usuario.setEstado(true); // Activo por defecto
 
+        // ENCRIPTAR LA CONTRASEÑA ANTES DE GUARDAR
+        String contrasenaEncriptada = passwordEncoder.encode(dto.getContrasena());
+        usuario.setContrasena(contrasenaEncriptada);
+
         usuarioRepository.save(usuario);
         log.info("Usuario creado exitosamente: {}", usuario.getNombreUsuario());
     }
+
+
     @Override
     @Transactional
     public void actualizarUsuario(Long id, UsuarioDto dto) throws Exception {
@@ -171,9 +193,17 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuarioMapper.updateUsuarioFromDto(dto, usuario);
 
         // Actualizar el estado manualmente si lo estás ignorando en el mapper
-        usuario.setEstado(dto.getEstado()); // ← Añade esta línea
+        usuario.setEstado(dto.getEstado());
+
+        // ENCRIPTAR LA CONTRASEÑA SI SE PROPORCIONA UNA NUEVA
+        if (dto.getContrasena() != null && !dto.getContrasena().trim().isEmpty()) {
+            String contrasenaEncriptada = passwordEncoder.encode(dto.getContrasena());
+            usuario.setContrasena(contrasenaEncriptada);
+            log.info("Contraseña actualizada para usuario ID: {}", id);
+        }
 
         usuarioRepository.save(usuario);
+        log.info("Usuario actualizado exitosamente: {}", usuario.getNombreUsuario());
     }
 
     @Override
