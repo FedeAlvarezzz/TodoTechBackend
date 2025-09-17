@@ -40,7 +40,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/usuarios/login").permitAll()
                         .requestMatchers("/usuarios/recordar-contrasena").permitAll()
-                        .requestMatchers("/usuarios", "/usuarios/**").hasRole("ADMIN") // Todos los endpoints de usuarios requieren ADMIN
+                        .requestMatchers("/usuarios", "/usuarios/**").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
