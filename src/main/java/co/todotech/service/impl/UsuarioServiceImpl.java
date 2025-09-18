@@ -8,8 +8,7 @@ import co.todotech.model.enums.TipoUsuario;
 import co.todotech.repository.UsuarioRepository;
 import co.todotech.security.JwtUtil;
 import co.todotech.service.UsuarioService;
-
-import co.todotech.utils.impl.EmailServiceImpl;
+import co.todotech.utils.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -29,14 +29,20 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioMapper usuarioMapper;
     private final UsuarioRepository usuarioRepository;
-    private final EmailServiceImpl emailService;
+    private final EmailService emailService; // Cambiado a la interfaz
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
 
+    // En tu método login - agrega estos logs para debug
     @Override
     public LoginResponse login(String nombreUsuario, String contrasena) throws Exception {
+        log.info("=== INICIO LOGIN ===");
+        log.info("Usuario intentando login: {}", nombreUsuario);
+
         Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario)
                 .orElseThrow(() -> new Exception("Usuario no encontrado"));
+
+        log.info("Usuario encontrado: {} - Email: {}", usuario.getNombreUsuario(), usuario.getCorreo());
 
         // Verificar contraseña con PasswordEncoder
         if (!passwordEncoder.matches(contrasena, usuario.getContrasena())) {
@@ -56,8 +62,11 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         // Notificar por email si es administrador
         if (usuario.getTipoUsuario().name().equals("ADMIN")) {
-            notificarIngresoAdmin(usuario);
+            log.info("Usuario es ADMIN - enviando notificación SOLO a: {}", usuario.getCorreo());
+            notificarIngresoAdmin(usuario); // SOLO este usuario
         }
+
+        log.info("=== FIN LOGIN EXITOSO ===");
 
         // Crear respuesta con token JWT
         return new LoginResponse(
@@ -69,6 +78,56 @@ public class UsuarioServiceImpl implements UsuarioService {
                 usuario.getTipoUsuario(),
                 "Login exitoso"
         );
+    }
+
+    // También en el método de recordatorio
+    @Override
+    @Transactional(readOnly = true)
+    public void solicitarRecordatorioContrasena(String correo) throws Exception {
+        log.info("=== INICIO RECORDATORIO CONTRASEÑA ===");
+        log.info("Correo solicitante: {}", correo);
+
+        // Validar que el correo no esté vacío
+        if (correo == null || correo.trim().isEmpty()) {
+            throw new Exception("El correo electrónico es requerido");
+        }
+
+        // Tipos de usuario permitidos para recordatorio
+        List<TipoUsuario> tiposPermitidos = Arrays.asList(
+                TipoUsuario.VENDEDOR,
+                TipoUsuario.CAJERO,
+                TipoUsuario.DESPACHADOR
+        );
+
+        // Buscar usuario por correo y tipo permitido
+        Usuario usuario = usuarioRepository.findByCorreoAndTipoUsuarioIn(correo, tiposPermitidos)
+                .orElseThrow(() -> new Exception("No se encontró un usuario activo con ese correo electrónico o no tiene permisos para solicitar recordatorio"));
+
+        log.info("Usuario encontrado para recordatorio: {} - Email: {}", usuario.getNombreUsuario(), usuario.getCorreo());
+
+        // Verificar que el usuario esté activo
+        if (!usuario.isEstado()) {
+            throw new Exception("El usuario está inactivo. Contacte al administrador");
+        }
+
+        try {
+            log.info("Enviando recordatorio ÚNICAMENTE a: {}", usuario.getCorreo());
+
+            // Enviar correo con credenciales - SOLO A ESTE USUARIO
+            emailService.sendPasswordReminder(
+                    usuario.getCorreo(), // SOLO este correo
+                    usuario.getNombre(),
+                    usuario.getNombreUsuario(),
+                    "Por razones de seguridad, contacte al administrador para restablecer su contraseña"
+            );
+
+            log.info("Recordatorio enviado exitosamente SOLO a: {}", usuario.getCorreo());
+            log.info("=== FIN RECORDATORIO CONTRASEÑA ===");
+
+        } catch (Exception e) {
+            log.error("Error al enviar recordatorio de contraseña a {}: {}", correo, e.getMessage());
+            throw new Exception("Error al enviar el recordatorio por correo: " + e.getMessage());
+        }
     }
 
     @Override
@@ -106,13 +165,13 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .collect(Collectors.toList());
     }
 
-
     private void notificarIngresoAdmin(Usuario admin) {
         try {
             String fechaHora = LocalDateTime.now()
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-            emailService.enviarNotificacionAdminLogin(
+            // Cambiado al nuevo método de la interfaz
+            emailService.sendAdminLoginNotification(
                     admin.getCorreo(),
                     admin.getNombre(),
                     fechaHora
@@ -167,7 +226,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         log.info("Usuario creado exitosamente: {}", usuario.getNombreUsuario());
     }
 
-
     @Override
     @Transactional
     public void actualizarUsuario(Long id, UsuarioDto dto) throws Exception {
@@ -215,7 +273,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuarioRepository.delete(usuario);
         log.info("Usuario eliminado físicamente: {}", id);
     }
-
 
     @Override
     public List<UsuarioDto> obtenerUsuariosPorTipo(TipoUsuario tipoUsuario) throws Exception {
@@ -284,58 +341,6 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
 
-    @Override
-    @Transactional
-    public void solicitarRecordatorioContrasena(String correo) throws Exception {
-        log.info("📧 Solicitando recordatorio de contraseña para el correo: {}", correo);
 
-        // Definir los tipos de usuario permitidos (VENDEDOR, CAJERO, DESPACHADOR)
-        List<TipoUsuario> tiposPermitidos = List.of(
-                TipoUsuario.VENDEDOR,
-                TipoUsuario.CAJERO,
-                TipoUsuario.DESPACHADOR
-        );
 
-        // Buscar usuario por correo
-        Optional<Usuario> usuarioOpt = usuarioRepository.findByCorreo(correo);
-
-        if (usuarioOpt.isEmpty()) {
-            throw new Exception("❌ No estás registrado en el sistema");
-        }
-
-        Usuario usuario = usuarioOpt.get();
-
-        // Verificar que sea de los tipos permitidos
-        if (!tiposPermitidos.contains(usuario.getTipoUsuario())) {
-            throw new Exception("❌ No tienes permisos para esta operación. Solo disponible para vendedores, cajeros y despachadores");
-        }
-
-        if (!usuario.isEstado()) {
-            throw new Exception("❌ Tu cuenta está inactiva. Contacta al administrador");
-        }
-
-        // Generar código de verificación
-        String codigoVerificacion = generarCodigoVerificacion();
-
-        // Enviar email con el recordatorio de contraseña
-        try {
-            emailService.enviarRecordatorioContrasena(
-                    usuario.getCorreo(),
-                    usuario.getNombre(),
-                    usuario.getContrasena(),
-                    codigoVerificacion
-            );
-
-            log.info("✅ Recordatorio de contraseña enviado exitosamente a: {}", correo);
-
-        } catch (Exception e) {
-            log.error("❌ Error al enviar recordatorio de contraseña: {}", e.getMessage());
-            throw new Exception("Error al enviar el recordatorio. Intenta nuevamente.");
-        }
-    }
-
-    private String generarCodigoVerificacion() {
-        // Generar un código de 6 dígitos
-        return String.format("%06d", (int) (Math.random() * 1000000));
-    }
 }
