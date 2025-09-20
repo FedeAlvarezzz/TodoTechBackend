@@ -1,7 +1,6 @@
 package co.todotech.model.dto.usuario;
 
 import co.todotech.model.enums.TipoUsuario;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -21,7 +20,7 @@ public class UsuarioDto implements Serializable {
     private String telefono;
     private String nombreUsuario;
 
-    @JsonIgnore // No se serializa en JSON
+    // REMOVER @JsonIgnore y usar solo @JsonProperty
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // Solo se puede escribir, no leer
     private String contrasena;
 
