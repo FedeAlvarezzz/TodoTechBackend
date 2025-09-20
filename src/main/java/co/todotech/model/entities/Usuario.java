@@ -17,7 +17,7 @@ public class Usuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
+    @Column(nullable = false)
     private Long id;
 
     @Column(name = "nombre", nullable = false, length = 120)
@@ -47,6 +47,6 @@ public class Usuario {
     private LocalDateTime fechaCreacion;
 
     @Column(name = "estado", nullable = false)
-    @Builder.Default  // ← ESTA ES LA SOLUCIÓN
+    @Builder.Default
     private boolean estado = false;
 }
