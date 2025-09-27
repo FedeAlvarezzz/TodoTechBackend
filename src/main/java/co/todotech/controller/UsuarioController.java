@@ -4,11 +4,15 @@ import co.todotech.model.dto.MensajeDto;
 import co.todotech.model.dto.usuario.LoginResponse;
 import co.todotech.model.dto.usuario.UsuarioDto;
 import co.todotech.model.enums.TipoUsuario;
+import co.todotech.security.JwtUtil;
+import co.todotech.security.TokenBlacklistService;
 import co.todotech.service.UsuarioService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -20,6 +24,10 @@ import java.util.List;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+
+    private final TokenBlacklistService tokenBlacklistService;
+
+    private final JwtUtil jwtUtil;
 
     // Login - PÚBLICO
     @PostMapping("/login")
@@ -230,6 +238,44 @@ public class UsuarioController {
                     "Se ha enviado un recordatorio de contraseña a tu correo electrónico"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage()));
+        }
+    }
+
+
+    // Logout - AUTENTICADO
+    @PostMapping("/logout")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MensajeDto<String>> logout(HttpServletRequest request) {
+        try {
+            String header = request.getHeader("Authorization");
+
+            if (header != null && header.startsWith("Bearer ")) {
+                String token = header.substring(7);
+
+                // Validar que el token sea válido antes de blacklistear
+                if (!jwtUtil.validateToken(token)) {
+                    return ResponseEntity.badRequest()
+                            .body(new MensajeDto<>(true, "Token inválido o expirado"));
+                }
+
+                // Verificar que el token no esté ya blacklisteado
+                if (tokenBlacklistService.isTokenBlacklisted(token)) {
+                    return ResponseEntity.ok(new MensajeDto<>(false, "Sesión ya estaba cerrada"));
+                }
+
+                tokenBlacklistService.blacklistToken(token);
+
+                // Limpiar el contexto de seguridad
+                SecurityContextHolder.clearContext();
+
+                return ResponseEntity.ok(new MensajeDto<>(false, "Sesión cerrada exitosamente"));
+            } else {
+                return ResponseEntity.badRequest()
+                        .body(new MensajeDto<>(true, "Token no proporcionado en formato Bearer"));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new MensajeDto<>(true, "Error al cerrar sesión: " + e.getMessage()));
         }
     }
 }

@@ -7,6 +7,7 @@ import co.todotech.model.entities.Usuario;
 import co.todotech.model.enums.TipoUsuario;
 import co.todotech.repository.UsuarioRepository;
 import co.todotech.security.JwtUtil;
+import co.todotech.security.TokenBlacklistService;
 import co.todotech.service.UsuarioService;
 import co.todotech.utils.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class UsuarioServiceImpl implements UsuarioService {
     private final EmailService emailService;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     public LoginResponse login(String nombreUsuario, String contrasena) throws Exception {
