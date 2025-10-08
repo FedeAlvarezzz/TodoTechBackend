@@ -2,6 +2,8 @@ package co.todotech.configuration;
 
 import co.todotech.security.JwtAuthenticationFilter;
 import co.todotech.security.JwtUtil;
+
+import co.todotech.security.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +26,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -40,11 +43,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/usuarios/login").permitAll()
                         .requestMatchers("/usuarios/recordar-contrasena").permitAll()
+                        .requestMatchers("/usuarios/logout").authenticated() // ← Cambiado a authenticated
                         .requestMatchers("/usuarios", "/usuarios/**").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new JwtAuthenticationFilter(jwtUtil),
+                .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, tokenBlacklistService),
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

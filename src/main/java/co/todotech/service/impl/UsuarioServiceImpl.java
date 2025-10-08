@@ -7,9 +7,9 @@ import co.todotech.model.entities.Usuario;
 import co.todotech.model.enums.TipoUsuario;
 import co.todotech.repository.UsuarioRepository;
 import co.todotech.security.JwtUtil;
+import co.todotech.security.TokenBlacklistService;
 import co.todotech.service.UsuarioService;
-
-import co.todotech.utils.impl.EmailServiceImpl;
+import co.todotech.utils.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,8 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -29,16 +30,21 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioMapper usuarioMapper;
     private final UsuarioRepository usuarioRepository;
-    private final EmailServiceImpl emailService;
+    private final EmailService emailService;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     public LoginResponse login(String nombreUsuario, String contrasena) throws Exception {
+        log.info("=== INICIO LOGIN ===");
+        log.info("Usuario intentando login: {}", nombreUsuario);
+
         Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario)
                 .orElseThrow(() -> new Exception("Usuario no encontrado"));
 
-        // Verificar contraseña con PasswordEncoder
+        log.info("Usuario encontrado: {} - Email: {}", usuario.getNombreUsuario(), usuario.getCorreo());
+
         if (!passwordEncoder.matches(contrasena, usuario.getContrasena())) {
             throw new Exception("Contraseña incorrecta");
         }
@@ -47,19 +53,19 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new Exception("Usuario inactivo. Contacte al administrador");
         }
 
-        // Generar token JWT
         String token = jwtUtil.generateToken(
                 usuario.getNombreUsuario(),
                 usuario.getId(),
                 usuario.getTipoUsuario().name()
         );
 
-        // Notificar por email si es administrador
         if (usuario.getTipoUsuario().name().equals("ADMIN")) {
+            log.info("Usuario es ADMIN - enviando notificación SOLO a: {}", usuario.getCorreo());
             notificarIngresoAdmin(usuario);
         }
 
-        // Crear respuesta con token JWT
+        log.info("=== FIN LOGIN EXITOSO ===");
+
         return new LoginResponse(
                 token,
                 "Bearer",
@@ -69,6 +75,50 @@ public class UsuarioServiceImpl implements UsuarioService {
                 usuario.getTipoUsuario(),
                 "Login exitoso"
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void solicitarRecordatorioContrasena(String correo) throws Exception {
+        log.info("=== INICIO RECORDATORIO CONTRASEÑA ===");
+        log.info("Correo solicitante: {}", correo);
+
+        if (correo == null || correo.trim().isEmpty()) {
+            throw new Exception("El correo electrónico es requerido");
+        }
+
+        List<TipoUsuario> tiposPermitidos = Arrays.asList(
+                TipoUsuario.VENDEDOR,
+                TipoUsuario.CAJERO,
+                TipoUsuario.DESPACHADOR
+        );
+
+        Usuario usuario = usuarioRepository.findByCorreoAndTipoUsuarioIn(correo, tiposPermitidos)
+                .orElseThrow(() -> new Exception("No se encontró un usuario activo con ese correo electrónico o no tiene permisos para solicitar recordatorio"));
+
+        log.info("Usuario encontrado para recordatorio: {} - Email: {}", usuario.getNombreUsuario(), usuario.getCorreo());
+
+        if (!usuario.isEstado()) {
+            throw new Exception("El usuario está inactivo. Contacte al administrador");
+        }
+
+        try {
+            log.info("Enviando recordatorio ÚNICAMENTE a: {}", usuario.getCorreo());
+
+            emailService.sendPasswordReminder(
+                    usuario.getCorreo(),
+                    usuario.getNombre(),
+                    usuario.getNombreUsuario(),
+                    "Por razones de seguridad, contacte al administrador para restablecer su contraseña"
+            );
+
+            log.info("Recordatorio enviado exitosamente SOLO a: {}", usuario.getCorreo());
+            log.info("=== FIN RECORDATORIO CONTRASEÑA ===");
+
+        } catch (Exception e) {
+            log.error("Error al enviar recordatorio de contraseña a {}: {}", correo, e.getMessage());
+            throw new Exception("Error al enviar el recordatorio por correo: " + e.getMessage());
+        }
     }
 
     @Override
@@ -85,34 +135,13 @@ public class UsuarioServiceImpl implements UsuarioService {
         return usuarioMapper.toDto(usuario);
     }
 
-    @Override
-    public List<UsuarioDto> obtenerTodosLosUsuarios() {
-        return usuarioRepository.findAll().stream()
-                .map(usuarioMapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<UsuarioDto> obtenerUsuariosActivos() {
-        return usuarioRepository.findByEstado(true).stream()
-                .map(usuarioMapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<UsuarioDto> obtenerUsuariosInactivos() {
-        return usuarioRepository.findByEstado(false).stream()
-                .map(usuarioMapper::toDto)
-                .collect(Collectors.toList());
-    }
-
 
     private void notificarIngresoAdmin(Usuario admin) {
         try {
             String fechaHora = LocalDateTime.now()
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-            emailService.enviarNotificacionAdminLogin(
+            emailService.sendAdminLoginNotification(
                     admin.getCorreo(),
                     admin.getNombre(),
                     fechaHora
@@ -122,7 +151,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         } catch (Exception e) {
             log.error("Error al enviar notificación de ingreso al admin {}: {}",
                     admin.getNombreUsuario(), e.getMessage());
-            // No lanzamos excepción para no afectar el flujo de login
         }
     }
 
@@ -143,7 +171,6 @@ public class UsuarioServiceImpl implements UsuarioService {
     public void crearUsuario(UsuarioDto dto) throws Exception {
         log.info("Creando usuario: {}", dto.getNombreUsuario());
 
-        // Verificar si ya existe usuario con cédula, correo o nombre de usuario
         if (usuarioRepository.existsByCedula(dto.getCedula())) {
             throw new Exception("Ya existe un usuario con la cédula: " + dto.getCedula());
         }
@@ -156,8 +183,13 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new Exception("Ya existe un usuario con el nombre de usuario: " + dto.getNombreUsuario());
         }
 
+        // Validar que la contraseña no sea nula o vacía al crear usuario
+        if (dto.getContrasena() == null || dto.getContrasena().trim().isEmpty()) {
+            throw new Exception("La contraseña es requerida para crear un usuario");
+        }
+
         Usuario usuario = usuarioMapper.toEntity(dto);
-        usuario.setEstado(true); // Activo por defecto
+        usuario.setEstado(true);
 
         // ENCRIPTAR LA CONTRASEÑA ANTES DE GUARDAR
         String contrasenaEncriptada = passwordEncoder.encode(dto.getContrasena());
@@ -166,7 +198,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuarioRepository.save(usuario);
         log.info("Usuario creado exitosamente: {}", usuario.getNombreUsuario());
     }
-
 
     @Override
     @Transactional
@@ -190,16 +221,19 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new Exception("Ya existe otro usuario con el nombre de usuario: " + dto.getNombreUsuario());
         }
 
+        // Actualizar campos EXCEPTO la contraseña
         usuarioMapper.updateUsuarioFromDto(dto, usuario);
-
-        // Actualizar el estado manualmente si lo estás ignorando en el mapper
         usuario.setEstado(dto.getEstado());
 
-        // ENCRIPTAR LA CONTRASEÑA SI SE PROPORCIONA UNA NUEVA
-        if (dto.getContrasena() != null && !dto.getContrasena().trim().isEmpty()) {
-            String contrasenaEncriptada = passwordEncoder.encode(dto.getContrasena());
-            usuario.setContrasena(contrasenaEncriptada);
-            log.info("Contraseña actualizada para usuario ID: {}", id);
+        // Manejar cambio de contraseña SOLO si se solicita explícitamente
+        if (Boolean.TRUE.equals(dto.getCambiarContrasena())) {
+            if (dto.getContrasena() != null && !dto.getContrasena().trim().isEmpty()) {
+                String contrasenaEncriptada = passwordEncoder.encode(dto.getContrasena());
+                usuario.setContrasena(contrasenaEncriptada);
+                log.info("Contraseña actualizada para usuario ID: {}", id);
+            } else {
+                throw new Exception("Se solicitó cambiar contraseña pero no se proporcionó una nueva contraseña");
+            }
         }
 
         usuarioRepository.save(usuario);
@@ -215,7 +249,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuarioRepository.delete(usuario);
         log.info("Usuario eliminado físicamente: {}", id);
     }
-
 
     @Override
     public List<UsuarioDto> obtenerUsuariosPorTipo(TipoUsuario tipoUsuario) throws Exception {
@@ -246,7 +279,68 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new Exception("No se encontraron usuarios con la cédula: " + cedula);
         }
         return usuarios.stream()
-                .map(usuarioMapper::toDto)
+                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioDto> obtenerTodosLosUsuarios() {
+        log.info("=== INICIANDO obtenerTodosLosUsuarios ===");
+
+        try {
+            log.debug("Buscando todos los usuarios en repository...");
+            List<Usuario> usuariosEntities = usuarioRepository.findAll();
+            log.info("Número de usuarios encontrados en BD: {}", usuariosEntities.size());
+
+            if (usuariosEntities.isEmpty()) {
+                log.warn("No se encontraron usuarios en la base de datos");
+                return Collections.emptyList();
+            }
+
+            log.debug("Iniciando mapeo de entities a DTOs...");
+            List<UsuarioDto> usuariosDto = usuariosEntities.stream()
+                    .map(usuario -> {
+                        log.trace("Mapeando usuario ID: {}, Nombre: {}", usuario.getId(), usuario.getNombre());
+                        log.trace("Contraseña en Entity: {}", usuario.getContrasena());
+
+                        UsuarioDto dto = usuarioMapper.toDtoSafe(usuario);
+
+                        log.trace("DTO mapeado - ID: {}, Contraseña en DTO: {}",
+                                dto.getId(), dto.getContrasena());
+                        log.trace("DTO completo: {}", dto.toString());
+
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+
+            log.info("Mapeo completado. Total DTOs generados: {}", usuariosDto.size());
+
+            // Log final de verificación
+            usuariosDto.forEach(dto -> {
+                log.debug("DTO final - ID: {}, Nombre: {}, Contraseña: {}",
+                        dto.getId(), dto.getNombre(), dto.getContrasena());
+            });
+
+            log.info("=== FINALIZANDO obtenerTodosLosUsuarios ===");
+            return usuariosDto;
+
+        } catch (Exception e) {
+            log.error("Error en obtenerTodosLosUsuarios: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @Override
+    public List<UsuarioDto> obtenerUsuariosActivos() {
+        return usuarioRepository.findByEstado(true).stream()
+                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioDto> obtenerUsuariosInactivos() {
+        return usuarioRepository.findByEstado(false).stream()
+                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
                 .collect(Collectors.toList());
     }
 
@@ -257,7 +351,7 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new Exception("No se encontraron usuarios en el rango de fechas especificado");
         }
         return usuarios.stream()
-                .map(usuarioMapper::toDto)
+                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
                 .collect(Collectors.toList());
     }
 
@@ -268,7 +362,7 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new Exception("No se encontraron usuarios creados después de: " + fecha);
         }
         return usuarios.stream()
-                .map(usuarioMapper::toDto)
+                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
                 .collect(Collectors.toList());
     }
 
@@ -279,63 +373,7 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new Exception("No se encontraron usuarios creados antes de: " + fecha);
         }
         return usuarios.stream()
-                .map(usuarioMapper::toDto)
+                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
                 .collect(Collectors.toList());
-    }
-
-
-    @Override
-    @Transactional
-    public void solicitarRecordatorioContrasena(String correo) throws Exception {
-        log.info("📧 Solicitando recordatorio de contraseña para el correo: {}", correo);
-
-        // Definir los tipos de usuario permitidos (VENDEDOR, CAJERO, DESPACHADOR)
-        List<TipoUsuario> tiposPermitidos = List.of(
-                TipoUsuario.VENDEDOR,
-                TipoUsuario.CAJERO,
-                TipoUsuario.DESPACHADOR
-        );
-
-        // Buscar usuario por correo
-        Optional<Usuario> usuarioOpt = usuarioRepository.findByCorreo(correo);
-
-        if (usuarioOpt.isEmpty()) {
-            throw new Exception("❌ No estás registrado en el sistema");
-        }
-
-        Usuario usuario = usuarioOpt.get();
-
-        // Verificar que sea de los tipos permitidos
-        if (!tiposPermitidos.contains(usuario.getTipoUsuario())) {
-            throw new Exception("❌ No tienes permisos para esta operación. Solo disponible para vendedores, cajeros y despachadores");
-        }
-
-        if (!usuario.isEstado()) {
-            throw new Exception("❌ Tu cuenta está inactiva. Contacta al administrador");
-        }
-
-        // Generar código de verificación
-        String codigoVerificacion = generarCodigoVerificacion();
-
-        // Enviar email con el recordatorio de contraseña
-        try {
-            emailService.enviarRecordatorioContrasena(
-                    usuario.getCorreo(),
-                    usuario.getNombre(),
-                    usuario.getContrasena(),
-                    codigoVerificacion
-            );
-
-            log.info("✅ Recordatorio de contraseña enviado exitosamente a: {}", correo);
-
-        } catch (Exception e) {
-            log.error("❌ Error al enviar recordatorio de contraseña: {}", e.getMessage());
-            throw new Exception("Error al enviar el recordatorio. Intenta nuevamente.");
-        }
-    }
-
-    private String generarCodigoVerificacion() {
-        // Generar un código de 6 dígitos
-        return String.format("%06d", (int) (Math.random() * 1000000));
     }
 }

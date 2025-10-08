@@ -1,232 +1,228 @@
 package co.todotech.utils.impl;
 
-import co.todotech.configuration.EmailConfig;
 import co.todotech.utils.EmailService;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+
+
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
 
-    private final JavaMailSender javaMailSender;
-    private final EmailConfig emailConfig;
+    private final JavaMailSender mailSender;
+
+    @Value("${app.email.from}")
+    private String fromEmail;
+
+    @Value("${app.email.admin-subject}")
+    private String adminSubject;
+
+    @Value("${app.email.password-reminder-subject}")
+    private String passwordReminderSubject;
+
+    // Patrón para validar emails
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "^[A-Za-z0-9+_.-]+@([A-Za-z0-9.-]+\\.[A-Za-z]{2,})$"
+    );
 
     @Override
-    public void enviarEmail(String to, String subject, String text) {
-        // Este método ahora será para texto plano, pero los otros usarán HTML
+    public void sendAdminLoginNotification(String email, String nombre, String fechaHora) throws Exception {
+        // Validaciones estrictas
+        validateSingleEmail(email);
+
         try {
-            MimeMessage message = javaMailSender.createMimeMessage();
+            log.info("=== ENVIANDO NOTIFICACIÓN ADMIN A: {} ===", email);
+
+            MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(emailConfig.getFrom());
-            helper.setTo(to);
-            helper.setSubject(subject);
+            // Configuración simple y directa
+            helper.setFrom(fromEmail);
+            helper.setTo(email.trim()); // SOLO un destinatario
+            helper.setSubject(adminSubject);
 
-            // Convertir texto plano a HTML básico|
-            String htmlContent = convertirTextoAHtml(text);
+            String htmlContent = buildAdminLoginNotificationHtml(nombre, fechaHora);
             helper.setText(htmlContent, true);
 
-            javaMailSender.send(message);
-            log.info("📧 Email enviado exitosamente a: {}", to);
+            // Enviar mensaje
+            mailSender.send(message);
+
+            log.info("✅ Notificación admin enviada EXITOSAMENTE a: {}", email);
+
         } catch (Exception e) {
-            log.error("❌ Error al enviar email a {}: {}", to, e.getMessage());
-            throw new RuntimeException("Error al enviar email: " + e.getMessage());
+            log.error("❌ ERROR al enviar notificación admin a {}: {}", email, e.getMessage(), e);
+            throw new Exception("Error al enviar notificación por correo: " + e.getMessage());
         }
     }
 
     @Override
-    public void enviarNotificacionAdminLogin(String adminEmail, String adminName, String fechaHora) {
+    public void sendPasswordReminder(String email, String nombre, String nombreUsuario, String contrasena) throws Exception {
+        // Validaciones estrictas
+        validateSingleEmail(email);
+
         try {
-            MimeMessage message = javaMailSender.createMimeMessage();
+            log.info("=== INICIANDO ENVÍO DE RECORDATORIO ===");
+            log.info("📧 Destinatario: {}", email);
+            log.info("👤 Nombre: {}", nombre);
+            log.info("👤 Nombre de usuario: {}", nombreUsuario);
+            log.info("🔒 Contraseña: [PROTEGIDA]"); // No loggear contraseñas reales por seguridad
+
+            long startTime = System.currentTimeMillis();
+
+            MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(emailConfig.getFrom());
-            helper.setTo(adminEmail);
-            helper.setSubject("🔐 " + emailConfig.getAdminNotificationSubject());
+            // Configuración simple y directa
+            helper.setFrom(fromEmail);
+            log.debug("📨 Remitente configurado: {}", fromEmail);
 
-            String contenido = "<!DOCTYPE html>"
-                    + "<html>"
-                    + "<head>"
-                    + "    <meta charset='UTF-8'>"
-                    + "    <title>Notificación de Ingreso</title>"
-                    + "    <style>"
-                    + "        * { margin: 0; padding: 0; box-sizing: border-box; }"
-                    + "        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; }"
-                    + "        .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }"
-                    + "        .header { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; padding: 30px; text-align: center; }"
-                    + "        .header h1 { font-size: 28px; margin-bottom: 10px; }"
-                    + "        .content { padding: 40px; }"
-                    + "        .alert-box { background: #fff3e0; border: 2px solid #ff9800; border-radius: 15px; padding: 25px; margin: 20px 0; text-align: center; }"
-                    + "        .alert-icon { font-size: 48px; margin-bottom: 15px; }"
-                    + "        .info-card { background: #f8f9fa; border-radius: 15px; padding: 25px; margin: 20px 0; border-left: 5px solid #007bff; }"
-                    + "        .info-item { display: flex; justify-content: space-between; margin: 12px 0; padding: 12px; background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }"
-                    + "        .footer { background: #2c3e50; color: white; text-align: center; padding: 25px; }"
-                    + "        .warning { background: #ffebee; border: 2px solid #f44336; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center; }"
-                    + "        .button { display: inline-block; background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: bold; }"
-                    + "        .gradient-text { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: bold; }"
-                    + "    </style>"
-                    + "</head>"
-                    + "<body>"
-                    + "    <div class='container'>"
-                    + "        <div class='header'>"
-                    + "            <h1>🚨 Notificación de Seguridad</h1>"
-                    + "            <p>Sistema de Gestión TodoTech</p>"
-                    + "        </div>"
-                    + "        <div class='content'>"
-                    + "            <div class='alert-box'>"
-                    + "                <div class='alert-icon'>⚠️</div>"
-                    + "                <h2>Actividad de Ingreso Detectada</h2>"
-                    + "                <p>Se ha identificado un acceso a tu cuenta administrativa</p>"
-                    + "            </div>"
-                    + "            "
-                    + "            <div class='info-card'>"
-                    + "                <h3>📋 Detalles del Ingreso</h3>"
-                    + "                <div class='info-item'>"
-                    + "                    <span>👤 Administrador:</span>"
-                    + "                    <span class='gradient-text'>" + adminName + "</span>"
-                    + "                </div>"
-                    + "                <div class='info-item'>"
-                    + "                    <span>📧 Email:</span>"
-                    + "                    <span>" + adminEmail + "</span>"
-                    + "                </div>"
-                    + "                <div class='info-item'>"
-                    + "                    <span>🕐 Fecha y Hora:</span>"
-                    + "                    <span>" + fechaHora + "</span>"
-                    + "                </div>"
-                    + "            </div>"
-                    + "            "
-                    + "            <div class='warning'>"
-                    + "                <h3>🔒 Acción Requerida</h3>"
-                    + "                <p>Si no reconoces esta actividad, contacta inmediatamente al equipo de soporte</p>"
-                    + "                <a href='mailto:soporte@todotech.com' class='button'>🆘 Contactar Soporte</a>"
-                    + "            </div>"
-                    + "        </div>"
-                    + "        <div class='footer'>"
-                    + "            <p>© 2024 TodoTech - Sistema de Gestión</p>"
-                    + "            <p>Este es un mensaje automático de seguridad</p>"
-                    + "        </div>"
-                    + "    </div>"
-                    + "</body>"
-                    + "</html>";
+            helper.setTo(email.trim()); // SOLO un destinatario
+            log.debug("✅ Destinatario configurado: {}", email.trim());
 
-            helper.setText(contenido, true);
-            javaMailSender.send(message);
+            helper.setSubject(passwordReminderSubject);
+            log.debug("📝 Asunto configurado: {}", passwordReminderSubject);
 
-            log.info("✅ Notificación de admin enviada exitosamente a: {}", adminEmail);
+            String htmlContent = buildPasswordReminderHtml(nombre, nombreUsuario, contrasena);
+            log.debug("📄 Contenido HTML generado (tamaño aprox.): {} caracteres", htmlContent.length());
+
+            helper.setText(htmlContent, true);
+            log.debug("✅ Contenido del email configurado");
+
+            // Enviar mensaje
+            log.info("🚀 Enviando email...");
+            mailSender.send(message);
+
+            long endTime = System.currentTimeMillis();
+            long duration = endTime - startTime;
+
+            log.info("✅ Recordatorio enviado EXITOSAMENTE a: {}", email);
+            log.info("⏰ Tiempo de ejecución: {} ms", duration);
+            log.info("=== ENVÍO COMPLETADO ===\n");
 
         } catch (Exception e) {
-            log.error("❌ Error enviando notificación a admin {}: {}", adminEmail, e.getMessage());
-            throw new RuntimeException("Error al enviar notificación: " + e.getMessage());
+            log.error("❌ ERROR CRÍTICO al enviar recordatorio");
+            log.error("📧 Destinatario fallido: {}", email);
+            log.error("🔍 Mensaje de error: {}", e.getMessage());
+            log.error("📋 Stack trace completo:", e);
+            log.error("=== ENVÍO FALLIDO ===");
+
+            throw new Exception("Error al enviar recordatorio por correo: " + e.getMessage());
         }
     }
 
-    @Override
-    public void enviarRecordatorioContrasena(String destinatario, String nombre, String contrasena, String codigoVerificacion) {
-        try {
-            MimeMessage message = javaMailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(emailConfig.getFrom());
-            helper.setTo(destinatario);
-            helper.setSubject("🔑 Recordatorio de Contraseña - TodoTech");
-
-            String contenido = "<!DOCTYPE html>"
-                    + "<html>"
-                    + "<head>"
-                    + "    <meta charset='UTF-8'>"
-                    + "    <title>Recordatorio de Contraseña</title>"
-                    + "    <style>"
-                    + "        * { margin: 0; padding: 0; box-sizing: border-box; }"
-                    + "        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; }"
-                    + "        .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }"
-                    + "        .header { background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%); color: white; padding: 30px; text-align: center; }"
-                    + "        .header h1 { font-size: 28px; margin-bottom: 10px; }"
-                    + "        .content { padding: 40px; }"
-                    + "        .welcome { text-align: center; margin-bottom: 30px; }"
-                    + "        .credentials-box { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border-radius: 15px; padding: 30px; margin: 30px 0; }"
-                    + "        .credential-item { background: rgba(255,255,255,0.1); padding: 15px; margin: 15px 0; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); }"
-                    + "        .security-note { background: #fff3e0; border: 2px solid #ff9800; border-radius: 15px; padding: 25px; margin: 20px 0; text-align: center; }"
-                    + "        .footer { background: #2c3e50; color: white; text-align: center; padding: 25px; }"
-                    + "        .button { display: inline-block; background: #ff6b6b; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: bold; }"
-                    + "        .icon { font-size: 24px; margin-right: 10px; }"
-                    + "        .highlight { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: bold; font-size: 18px; }"
-                    + "    </style>"
-                    + "</head>"
-                    + "<body>"
-                    + "    <div class='container'>"
-                    + "        <div class='header'>"
-                    + "            <h1>🔐 Recuperación de Credenciales</h1>"
-                    + "            <p>Sistema TodoTech - Acceso Seguro</p>"
-                    + "        </div>"
-                    + "        <div class='content'>"
-                    + "            <div class='welcome'>"
-                    + "                <h2>Hola, <span class='highlight'>" + nombre + "</span>! 👋</h2>"
-                    + "                <p>Has solicitado recordar tus credenciales de acceso al sistema</p>"
-                    + "            </div>"
-                    + "            "
-                    + "            <div class='credentials-box'>"
-                    + "                <h3 style='text-align: center; margin-bottom: 20px;'>🎯 Tus Credenciales de Acceso</h3>"
-                    + "                "
-                    + "                <div class='credential-item'>"
-                    + "                    <span class='icon'>📧</span>"
-                    + "                    <strong>Correo Electrónico:</strong><br>"
-                    + "                    <span style='font-size: 16px;'>" + destinatario + "</span>"
-                    + "                </div>"
-                    + "                "
-                    + "                <div class='credential-item'>"
-                    + "                    <span class='icon'>👤</span>"
-                    + "                    <strong>Nombre de Usuario:</strong><br>"
-                    + "                    <span style='font-size: 16px;'>" + nombre + "</span>"
-                    + "                </div>"
-                    + "                "
-                    + "                <div class='credential-item'>"
-                    + "                    <span class='icon'>🔑</span>"
-                    + "                    <strong>Contraseña:</strong><br>"
-                    + "                    <span style='font-size: 18px; font-weight: bold; letter-spacing: 2px;'>" + contrasena + "</span>"
-                    + "                </div>"
-                    + "            </div>"
-                    + "            "
-                    + "            <div class='security-note'>"
-                    + "                <h3>⚠️ Importante: Seguridad de la Información</h3>"
-                    + "                <p>• Mantén tus credenciales en un lugar seguro<br>"
-                    + "                   • No compartas esta información con nadie<br>"
-                    + "                   • Cambia tu contraseña periódicamente<br>"
-                    + "                   • Contacta a soporte si no solicitaste este recordatorio</p>"
-                    + "                <a href='mailto:soporte@todotech.com' class='button'>🛡️ Contactar Seguridad</a>"
-                    + "            </div>"
-                    + "        </div>"
-                    + "        <div class='footer'>"
-                    + "            <p>© 2024 TodoTech - Todos los derechos reservados</p>"
-                    + "            <p>🔒 Este es un mensaje automático de seguridad</p>"
-                    + "        </div>"
-                    + "    </div>"
-                    + "</body>"
-                    + "</html>";
-
-            helper.setText(contenido, true);
-            javaMailSender.send(message);
-
-            log.info("✅ Email de recordatorio enviado exitosamente a: {}", destinatario);
-
-        } catch (Exception e) {
-            log.error("❌ Error enviando email de recordatorio a {}: {}", destinatario, e.getMessage());
-            throw new RuntimeException("Error al enviar el email de recordatorio: " + e.getMessage());
+    /**
+     * Valida que el email sea único y válido
+     */
+    private void validateSingleEmail(String email) throws Exception {
+        if (email == null || email.trim().isEmpty()) {
+            throw new Exception("El email no puede estar vacío");
         }
+
+        String cleanEmail = email.trim();
+
+        // Verificar que no contenga múltiples emails (separados por comas, punto y coma, etc.)
+        if (cleanEmail.contains(",") || cleanEmail.contains(";") || cleanEmail.contains(" ")) {
+            throw new Exception("Solo se permite un email por envío. Email recibido: " + cleanEmail);
+        }
+
+        // Validar formato del email
+        if (!EMAIL_PATTERN.matcher(cleanEmail).matches()) {
+            throw new Exception("Formato de email inválido: " + cleanEmail);
+        }
+
+        log.info("✅ Email validado: {}", cleanEmail);
     }
 
-    private String convertirTextoAHtml(String texto) {
-        // Conversión básica de texto plano a HTML
-        return "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"
-                + "body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }"
-                + ".container { max-width: 600px; margin: 0 auto; }"
-                + "</style></head><body><div class='container'>"
-                + texto.replace("\n", "<br>")
-                + "</div></body></html>";
+    private String buildAdminLoginNotificationHtml(String nombre, String fechaHora) {
+        return "<!DOCTYPE html>" +
+                "<html>" +
+                "<head>" +
+                "    <meta charset='UTF-8'>" +
+                "    <style>" +
+                "        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }" +
+                "        .container { max-width: 600px; margin: 0 auto; padding: 20px; }" +
+                "        .header { background-color: #007bff; color: white; text-align: center; padding: 20px; border-radius: 5px 5px 0 0; }" +
+                "        .content { background-color: #f8f9fa; padding: 20px; border: 1px solid #dee2e6; }" +
+                "        .footer { background-color: #6c757d; color: white; text-align: center; padding: 10px; border-radius: 0 0 5px 5px; }" +
+                "        .info-box { background-color: white; padding: 15px; margin: 10px 0; border-left: 4px solid #007bff; }" +
+                "    </style>" +
+                "</head>" +
+                "<body>" +
+                "    <div class='container'>" +
+                "        <div class='header'>" +
+                "            <h2>🔐 Notificación de Ingreso al Sistema</h2>" +
+                "        </div>" +
+                "        <div class='content'>" +
+                "            <h3>¡Hola " + nombre + "!</h3>" +
+                "            <p>Se ha detectado un nuevo ingreso a tu cuenta de administrador en el sistema TodoTech.</p>" +
+                "            <div class='info-box'>" +
+                "                <p><strong>📅 Fecha y hora de ingreso:</strong> " + fechaHora + "</p>" +
+                "                <p><strong>👤 Usuario:</strong> " + nombre + "</p>" +
+                "            </div>" +
+                "            <p>Si fuiste tú quien ingresó, puedes ignorar este mensaje. Si no reconoces este acceso, por favor contacta al soporte técnico inmediatamente.</p>" +
+                "            <p><strong>Por tu seguridad, revisa regularmente los accesos a tu cuenta.</strong></p>" +
+                "        </div>" +
+                "        <div class='footer'>" +
+                "            <p>© 2024 TodoTech - Sistema de Gestión</p>" +
+                "        </div>" +
+                "    </div>" +
+                "</body>" +
+                "</html>";
+    }
+
+    private String buildPasswordReminderHtml(String nombre, String nombreUsuario, String contrasena) {
+        return "<!DOCTYPE html>" +
+                "<html>" +
+                "<head>" +
+                "    <meta charset='UTF-8'>" +
+                "    <style>" +
+                "        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }" +
+                "        .container { max-width: 600px; margin: 0 auto; padding: 20px; }" +
+                "        .header { background-color: #28a745; color: white; text-align: center; padding: 20px; border-radius: 5px 5px 0 0; }" +
+                "        .content { background-color: #f8f9fa; padding: 20px; border: 1px solid #dee2e6; }" +
+                "        .footer { background-color: #6c757d; color: white; text-align: center; padding: 10px; border-radius: 0 0 5px 5px; }" +
+                "        .credentials-box { background-color: white; padding: 15px; margin: 15px 0; border-left: 4px solid #28a745; border-radius: 4px; }" +
+                "        .warning { background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 10px; border-radius: 4px; margin: 15px 0; }" +
+                "        .password { font-family: 'Courier New', monospace; font-weight: bold; color: #dc3545; font-size: 16px; }" +
+                "    </style>" +
+                "</head>" +
+                "<body>" +
+                "    <div class='container'>" +
+                "        <div class='header'>" +
+                "            <h2>🔑 Recordatorio de Contraseña</h2>" +
+                "        </div>" +
+                "        <div class='content'>" +
+                "            <h3>¡Hola " + nombre + "!</h3>" +
+                "            <p>Has solicitado un recordatorio de tus credenciales de acceso al sistema TodoTech.</p>" +
+                "            <div class='credentials-box'>" +
+                "                <h4>📝 Tus credenciales son:</h4>" +
+                "                <p><strong>👤 Usuario:</strong> " + nombreUsuario + "</p>" +
+                "                <p><strong>🔐 Contraseña:</strong> <span class='password'>" + contrasena + "</span></p>" +
+                "            </div>" +
+                "            <div class='warning'>" +
+                "                <p><strong>⚠️ Importante:</strong></p>" +
+                "                <ul>" +
+                "                    <li>Guarda esta información en un lugar seguro</li>" +
+                "                    <li>No compartas tus credenciales con nadie</li>" +
+                "                    <li>Considera cambiar tu contraseña después de iniciar sesión</li>" +
+                "                    <li>Si no solicitaste este recordatorio, contacta al administrador</li>" +
+                "                </ul>" +
+                "            </div>" +
+                "            <p>Puedes iniciar sesión en el sistema usando las credenciales proporcionadas arriba.</p>" +
+                "        </div>" +
+                "        <div class='footer'>" +
+                "            <p>© 2024 TodoTech - Sistema de Gestión</p>" +
+                "        </div>" +
+                "    </div>" +
+                "</body>" +
+                "</html>";
     }
 }

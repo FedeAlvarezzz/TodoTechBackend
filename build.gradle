@@ -39,6 +39,10 @@ dependencies {
     // NUEVA DEPENDENCIA: Spring Mail
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 
+    // NUEVAS DEPENDENCIAS: Spring Retry
+    implementation 'org.springframework.retry:spring-retry:2.0.12'
+    implementation 'org.springframework:spring-aspects:6.2.5'
+
     // JWT Auth0 - PARA TOKENS JWT
     implementation 'com.auth0:java-jwt:4.4.0'
 
