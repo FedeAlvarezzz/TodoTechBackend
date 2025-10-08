@@ -36,7 +36,6 @@ out/
 ### VS Code ###
 .vscode/
 
-
 ### Logs ###
 logs/
 *.log
@@ -44,3 +43,7 @@ logs/
 ### Sistema operativo ###
 .DS_Store
 Thumbs.db
+
+### Environment ###
+.env
+*.env

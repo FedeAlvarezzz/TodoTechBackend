@@ -33,8 +33,18 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
+    // PARA CARGAR .env
+    implementation 'io.github.cdimascio:dotenv-java:3.0.2'
+
     // NUEVA DEPENDENCIA: Spring Mail
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+    // NUEVAS DEPENDENCIAS: Spring Retry
+    implementation 'org.springframework.retry:spring-retry:2.0.12'
+    implementation 'org.springframework:spring-aspects:6.2.5'
+
+    // JWT Auth0 - PARA TOKENS JWT
+    implementation 'com.auth0:java-jwt:4.4.0'
 
     // MapStruct
     implementation 'org.mapstruct:mapstruct:1.6.3'
@@ -79,5 +89,26 @@ tasks.named('test') {
     useJUnitPlatform()
     testLogging {
         events "passed", "skipped", "failed"
+    }
+}
+
+// Agrega esto al final del build.gradle
+processResources {
+    from('.') {
+        include '.env'
+        into 'resources'
+    }
+}
+
+bootRun {
+    // Pasar propiedades del sistema a la aplicación
+    systemProperties System.properties
+}
+
+// Para limpiar y reconstruir completamente
+tasks.named('clean') {
+    doLast {
+        delete 'build'
+        delete 'out'
     }
 }

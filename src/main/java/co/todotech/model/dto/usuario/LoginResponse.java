@@ -9,8 +9,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginResponse {
-    private String mensaje;
-    private TipoUsuario tipoUsuario;
+    private String token;
+    private String tokenType = "Bearer";
+    private Long userId;
+    private String username;
     private String nombre;
-    private String nombreUsuario;
+    private TipoUsuario role;
+    private String mensaje;
 }
