@@ -7,16 +7,23 @@ import java.util.List;
 
 public interface ProductoService {
 
-    void crearProducto(ProductoDto productoDto) throws  Exception;
-    void actualizarProducto(Long id, ProductoDto dto) throws  Exception;
-    void eliminarProducto(Long id) throws  Exception;
-    void cambiarEstadoProducto(Long id) throws  Exception;
+    void crearProducto(ProductoDto productoDto);
+    void actualizarProducto(Long id, ProductoDto dto);
+    void eliminarProducto(Long id);
+    void cambiarEstadoProducto(Long id);
 
-    ProductoDto obtenerProductoPorId(Long id) throws  Exception;
-    ProductoDto obtenerProductoPorCodigo(String codigo) throws  Exception;
-    ProductoDto obtenerProductoPorNombre(String nombre) throws Exception;
+    ProductoDto obtenerProductoPorId(Long id);
+    ProductoDto obtenerProductoPorCodigo(String codigo);
+    ProductoDto obtenerProductoPorNombre(String nombre);
 
     List<ProductoDto> obtenerProductoPorEstado(EstadoProducto estado);
     List<ProductoDto> obtenerProductoPorCategoriaId(Long categoriaId);
 
+    // Nuevos métodos para los endpoints adicionales
+    List<ProductoDto> obtenerProductosActivos();
+    List<ProductoDto> buscarProductosPorNombre(String nombre);
+    List<ProductoDto> obtenerProductosDisponibles();
+
+    // Método para obtener todos los productos (NUEVO)
+    List<ProductoDto> obtenerTodosLosProductos();
 }
