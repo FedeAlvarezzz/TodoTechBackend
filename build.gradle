@@ -25,6 +25,7 @@ repositories {
 }
 
 dependencies {
+    // DEPENDENCIAS PRINCIPALES
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -36,14 +37,14 @@ dependencies {
     // PARA CARGAR .env
     implementation 'io.github.cdimascio:dotenv-java:3.0.2'
 
-    // NUEVA DEPENDENCIA: Spring Mail
+    // SPRING MAIL
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 
-    // NUEVAS DEPENDENCIAS: Spring Retry
+    // SPRING RETRY
     implementation 'org.springframework.retry:spring-retry:2.0.12'
     implementation 'org.springframework:spring-aspects:6.2.5'
 
-    // JWT Auth0 - PARA TOKENS JWT
+    // JWT Auth0
     implementation 'com.auth0:java-jwt:4.4.0'
 
     // MapStruct
@@ -54,25 +55,34 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // Integración Lombok + MapStruct (CRUCIAL)
+    // Integración Lombok + MapStruct
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     runtimeOnly 'org.postgresql:postgresql'
 
-    // TEST DEPENDENCIES - AÑADIDAS
+    // DEPENDENCIAS DE TESTING - OPTIMIZADAS
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
-    testImplementation 'org.mockito:mockito-junit-jupiter:5.12.0' // ← NUEVA
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2' // ← NUEVA
 
-    // Lombok para tests - CRUCIAL para @InjectMocks
-    testCompileOnly 'org.projectlombok:lombok' // ← NUEVA
-    testAnnotationProcessor 'org.projectlombok:lombok' // ← NUEVA
+    // JUnit Jupiter completo
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+
+    // Mockito
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+
+    // Lombok para tests
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+
+    // Base de datos en memoria para testing
+    testImplementation 'com.h2database:h2'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2' // ← NUEVA
 }
 
 // Configuración para que MapStruct funcione correctamente con Lombok
@@ -85,10 +95,38 @@ tasks.withType(JavaCompile) {
 }
 
 // Configuración para tests
-tasks.named('test') {
+test {
     useJUnitPlatform()
     testLogging {
         events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = true
+    }
+
+    // Ejecutar tests en paralelo
+    maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+
+    // Configurar memoria para tests
+    minHeapSize = "512m"
+    maxHeapSize = "2g"
+
+    // Fail fast en CI
+    if (System.getenv('CI')) {
+        failFast = true
+    }
+}
+
+// Tarea para ejecutar solo tests unitarios (sin integración)
+tasks.register('unitTest', Test) {
+    useJUnitPlatform {
+        excludeTags 'integration'
+    }
+}
+
+// Tarea para ejecutar solo tests de integración
+tasks.register('integrationTest', Test) {
+    useJUnitPlatform {
+        includeTags 'integration'
     }
 }
 
@@ -106,9 +144,19 @@ bootRun {
 }
 
 // Para limpiar y reconstruir completamente
-tasks.named('clean') {
-    doLast {
-        delete 'build'
-        delete 'out'
+clean {
+    delete 'build'
+    delete 'out'
+}
+
+// Generar reportes de tests
+tasks.named('test') {
+    reports {
+        html.required = true
+        junitXml.required = true
     }
+
+    // Configurar propiedades para tests
+    systemProperty 'spring.profiles.active', 'test'
+    systemProperty 'java.awt.headless', 'true'
 }

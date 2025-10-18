@@ -32,9 +32,10 @@ public class OrdenController {
         }
     }
 
+    // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<OrdenDto>> obtenerOrden(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<OrdenDto>> obtenerOrden(@PathVariable("id") Long id) {
         try {
             OrdenDto orden = ordenService.obtenerOrden(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Orden encontrada", orden));
@@ -45,7 +46,8 @@ public class OrdenController {
 
     @GetMapping("/{id}/detalles")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<OrdenConDetallesDto>> obtenerOrdenConDetalles(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<OrdenConDetallesDto>> obtenerOrdenConDetalles(
+            @PathVariable("id") Long id) {
         try {
             OrdenConDetallesDto orden = ordenService.obtenerOrdenConDetalles(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Orden con detalles encontrada", orden));
@@ -65,9 +67,10 @@ public class OrdenController {
         }
     }
 
+    // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @GetMapping("/cliente/{clienteId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<List<OrdenDto>>> obtenerOrdenesPorCliente(@PathVariable Long clienteId) {
+    public ResponseEntity<MensajeDto<List<OrdenDto>>> obtenerOrdenesPorCliente(@PathVariable("clienteId") Long clienteId) {
         try {
             List<OrdenDto> ordenes = ordenService.obtenerOrdenesPorCliente(clienteId);
             return ResponseEntity.ok(new MensajeDto<>(false, "Órdenes del cliente obtenidas", ordenes));
@@ -76,9 +79,10 @@ public class OrdenController {
         }
     }
 
+    // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @GetMapping("/estado/{estado}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<List<OrdenDto>>> obtenerOrdenesPorEstado(@PathVariable EstadoOrden estado) {
+    public ResponseEntity<MensajeDto<List<OrdenDto>>> obtenerOrdenesPorEstado(@PathVariable("estado") EstadoOrden estado) {
         try {
             List<OrdenDto> ordenes = ordenService.obtenerOrdenesPorEstado(estado);
             return ResponseEntity.ok(new MensajeDto<>(false, "Órdenes por estado obtenidas", ordenes));
@@ -87,9 +91,10 @@ public class OrdenController {
         }
     }
 
+    // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
-    public ResponseEntity<MensajeDto<OrdenDto>> actualizarOrden(@PathVariable Long id,
+    public ResponseEntity<MensajeDto<OrdenDto>> actualizarOrden(@PathVariable("id") Long id,
                                                                 @Valid @RequestBody OrdenDto ordenDto) {
         try {
             OrdenDto ordenActualizada = ordenService.actualizarOrden(id, ordenDto);
@@ -99,9 +104,10 @@ public class OrdenController {
         }
     }
 
+    // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
-    public ResponseEntity<MensajeDto<OrdenDto>> actualizarEstadoOrden(@PathVariable Long id,
+    public ResponseEntity<MensajeDto<OrdenDto>> actualizarEstadoOrden(@PathVariable("id") Long id,
                                                                       @RequestParam EstadoOrden nuevoEstado) {
         try {
             OrdenDto ordenActualizada = ordenService.actualizarEstadoOrden(id, nuevoEstado);
@@ -111,9 +117,10 @@ public class OrdenController {
         }
     }
 
+    // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @PatchMapping("/{id}/pagada")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
-    public ResponseEntity<MensajeDto<OrdenDto>> marcarComoPagada(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<OrdenDto>> marcarComoPagada(@PathVariable("id") Long id) {
         try {
             OrdenDto ordenActualizada = ordenService.marcarComoPagada(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Orden marcada como pagada", ordenActualizada));
@@ -122,9 +129,10 @@ public class OrdenController {
         }
     }
 
+    // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @PatchMapping("/{id}/entregada")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
-    public ResponseEntity<MensajeDto<OrdenDto>> marcarComoEntregada(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<OrdenDto>> marcarComoEntregada(@PathVariable("id") Long id) {
         try {
             OrdenDto ordenActualizada = ordenService.marcarComoEntregada(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Orden marcada como entregada", ordenActualizada));
@@ -133,9 +141,10 @@ public class OrdenController {
         }
     }
 
+    // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @PatchMapping("/{id}/cerrada")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
-    public ResponseEntity<MensajeDto<OrdenDto>> marcarComoCerrada(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<OrdenDto>> marcarComoCerrada(@PathVariable("id") Long id) {
         try {
             OrdenDto ordenActualizada = ordenService.marcarComoCerrada(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Orden marcada como cerrada", ordenActualizada));
@@ -144,9 +153,10 @@ public class OrdenController {
         }
     }
 
+    // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @PatchMapping("/{id}/descuento")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
-    public ResponseEntity<MensajeDto<OrdenDto>> aplicarDescuento(@PathVariable Long id,
+    public ResponseEntity<MensajeDto<OrdenDto>> aplicarDescuento(@PathVariable("id") Long id,
                                                                  @RequestParam Double porcentajeDescuento) {
         try {
             OrdenDto ordenActualizada = ordenService.aplicarDescuento(id, porcentajeDescuento);
@@ -156,14 +166,51 @@ public class OrdenController {
         }
     }
 
+    // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<MensajeDto<String>> eliminarOrden(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<String>> eliminarOrden(@PathVariable("id") Long id) {
         try {
             ordenService.eliminarOrden(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Orden eliminada exitosamente"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/vendedor/{vendedorId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MensajeDto<List<OrdenDto>>> obtenerOrdenesPorVendedor(
+            @PathVariable("vendedorId") Long vendedorId) {
+        try {
+            List<OrdenDto> ordenes = ordenService.obtenerOrdenesPorVendedor(vendedorId);
+            return ResponseEntity.ok(new MensajeDto<>(false, "Órdenes del vendedor obtenidas", ordenes));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    @PatchMapping("/{id}/agregando-productos")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
+    public ResponseEntity<MensajeDto<OrdenDto>> marcarComoAgregandoProductos(
+            @PathVariable("id") Long id) {
+        try {
+            OrdenDto ordenActualizada = ordenService.marcarComoAgregandoProductos(id);
+            return ResponseEntity.ok(new MensajeDto<>(false, "Orden marcada como agregando productos", ordenActualizada));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    @PatchMapping("/{id}/disponible-pago")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
+    public ResponseEntity<MensajeDto<OrdenDto>> marcarComoDisponibleParaPago(
+            @PathVariable("id") Long id) {
+        try {
+            OrdenDto ordenActualizada = ordenService.marcarComoDisponibleParaPago(id);
+            return ResponseEntity.ok(new MensajeDto<>(false, "Orden marcada como disponible para pago", ordenActualizada));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
         }
     }
 }

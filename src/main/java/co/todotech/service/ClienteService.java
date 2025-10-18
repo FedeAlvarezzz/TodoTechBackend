@@ -22,4 +22,6 @@ public interface ClienteService {
     List<ClienteDto> obtenerClientesRegistradosEntre(LocalDateTime fechaInicio, LocalDateTime fechaFin);
 
     long contarClientesPorTipo(TipoCliente tipoCliente);
+
+    List<ClienteDto> obtenerTodosLosClientes();
 }

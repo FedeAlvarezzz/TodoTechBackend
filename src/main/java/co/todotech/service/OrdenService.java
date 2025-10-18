@@ -34,4 +34,10 @@ public interface OrdenService {
     void eliminarOrden(Long id);
 
     OrdenDto aplicarDescuento(Long ordenId, Double porcentajeDescuento);
+
+    // En OrdenService.java - añade este método:
+    List<OrdenDto> obtenerOrdenesPorVendedor(Long vendedorId);
+
+    OrdenDto marcarComoAgregandoProductos(Long id);
+    OrdenDto marcarComoDisponibleParaPago(Long id);
 }

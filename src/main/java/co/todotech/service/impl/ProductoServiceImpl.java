@@ -181,7 +181,155 @@ public class ProductoServiceImpl implements ProductoService {
                 .toList();
     }
 
-    // ========== MÉTODOS PRIVADOS DE APOYO ==========
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductoDto> obtenerTodosLosProductos() {
+        log.debug("Obteniendo todos los productos");
+
+        return productoRepository.findAll().stream()
+                .map(productoMapper::toDto)
+                .toList();
+    }
+
+    // ========== NUEVOS MÉTODOS PARA AJUSTAR STOCK ==========
+
+    @Override
+    @Transactional
+    public void ajustarStockProducto(Long id, Integer cantidad, String operacion) {
+        log.info("Ajustando stock del producto id={}, operación: {}, cantidad: {}", id, operacion, cantidad);
+
+        // Validaciones básicas
+        validarParametrosStock(id, cantidad, operacion);
+
+        // Obtener el producto
+        Producto producto = obtenerProductoPorIdSeguro(id);
+
+        // Validar que el producto esté activo para operaciones de stock
+        if (producto.getEstado() == EstadoProducto.INACTIVO) {
+            throw new ProductoBusinessException("No se puede ajustar el stock de un producto inactivo");
+        }
+
+        // Realizar la operación correspondiente
+        switch (operacion.toUpperCase()) {
+            case "INCREMENTAR":
+                incrementarStock(producto, cantidad);
+                break;
+            case "DECREMENTAR":
+                decrementarStock(producto, cantidad);
+                break;
+            case "AJUSTAR":
+                establecerStockDirecto(producto, cantidad);
+                break;
+            default:
+                throw new ProductoBusinessException("Operación no válida. Use: INCREMENTAR, DECREMENTAR o AJUSTAR");
+        }
+
+        // Actualizar estado automáticamente según el stock
+        actualizarEstadoSegunStock(producto);
+
+        productoRepository.save(producto);
+        log.info("Stock ajustado exitosamente - Producto: {}, Stock final: {}, Operación: {}",
+                producto.getNombre(), producto.getStock(), operacion);
+    }
+
+    @Override
+    @Transactional
+    public void incrementarStock(Long id, Integer cantidad) {
+        log.info("Incrementando stock del producto id={}, cantidad: {}", id, cantidad);
+        ajustarStockProducto(id, cantidad, "INCREMENTAR");
+    }
+
+    @Override
+    @Transactional
+    public void decrementarStock(Long id, Integer cantidad) {
+        log.info("Decrementando stock del producto id={}, cantidad: {}", id, cantidad);
+        ajustarStockProducto(id, cantidad, "DECREMENTAR");
+    }
+
+    @Override
+    @Transactional
+    public void establecerStock(Long id, Integer nuevoStock) {
+        log.info("Estableciendo stock del producto id={} a: {}", id, nuevoStock);
+        ajustarStockProducto(id, nuevoStock, "AJUSTAR");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer consultarStock(Long id) {
+        log.debug("Consultando stock del producto id={}", id);
+
+        if (id == null) {
+            throw new ProductoBusinessException("El ID del producto no puede ser nulo");
+        }
+
+        Producto producto = obtenerProductoPorIdSeguro(id);
+        return producto.getStock();
+    }
+
+    // ========== MÉTODOS PRIVADOS DE APOYO PARA STOCK ==========
+
+    private void validarParametrosStock(Long id, Integer cantidad, String operacion) {
+        if (id == null) {
+            throw new ProductoBusinessException("El ID del producto no puede ser nulo");
+        }
+
+        if (cantidad == null) {
+            throw new ProductoBusinessException("La cantidad no puede ser nula");
+        }
+
+        if (operacion == null || operacion.trim().isEmpty()) {
+            throw new ProductoBusinessException("La operación no puede estar vacía");
+        }
+
+        if (cantidad < 0) {
+            throw new ProductoBusinessException("La cantidad no puede ser negativa");
+        }
+    }
+
+    private void incrementarStock(Producto producto, Integer cantidad) {
+        int nuevoStock = producto.getStock() + cantidad;
+        producto.setStock(nuevoStock);
+        log.debug("Stock incrementado: {} + {} = {}", producto.getStock() - cantidad, cantidad, nuevoStock);
+    }
+
+    private void decrementarStock(Producto producto, Integer cantidad) {
+        int stockActual = producto.getStock();
+
+        if (stockActual < cantidad) {
+            throw new ProductoBusinessException(
+                    String.format("Stock insuficiente. Stock actual: %d, cantidad a decrementar: %d",
+                            stockActual, cantidad)
+            );
+        }
+
+        int nuevoStock = stockActual - cantidad;
+        producto.setStock(nuevoStock);
+        log.debug("Stock decrementado: {} - {} = {}", stockActual, cantidad, nuevoStock);
+    }
+
+    private void establecerStockDirecto(Producto producto, Integer nuevoStock) {
+        if (nuevoStock < 0) {
+            throw new ProductoBusinessException("El stock no puede ser negativo");
+        }
+
+        producto.setStock(nuevoStock);
+        log.debug("Stock establecido directamente a: {}", nuevoStock);
+    }
+
+    private void actualizarEstadoSegunStock(Producto producto) {
+        // Solo actualizar estado si el producto está ACTIVO o AGOTADO
+        if (producto.getEstado() == EstadoProducto.ACTIVO || producto.getEstado() == EstadoProducto.AGOTADO) {
+            if (producto.getStock() <= 0) {
+                producto.setEstado(EstadoProducto.AGOTADO);
+                log.debug("Producto marcado como AGOTADO por stock cero");
+            } else if (producto.getEstado() == EstadoProducto.AGOTADO && producto.getStock() > 0) {
+                producto.setEstado(EstadoProducto.ACTIVO);
+                log.debug("Producto reactivado - Stock disponible: {}", producto.getStock());
+            }
+        }
+    }
+
+    // ========== MÉTODOS PRIVADOS DE APOYO EXISTENTES ==========
 
     private Producto obtenerProductoPorIdSeguro(Long id) {
         if (id == null) {
@@ -254,15 +402,5 @@ public class ProductoServiceImpl implements ProductoService {
         return (estadoActual == EstadoProducto.ACTIVO)
                 ? EstadoProducto.INACTIVO
                 : EstadoProducto.ACTIVO;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ProductoDto> obtenerTodosLosProductos() {
-        log.debug("Obteniendo todos los productos");
-
-        return productoRepository.findAll().stream()
-                .map(productoMapper::toDto)
-                .toList();
     }
 }

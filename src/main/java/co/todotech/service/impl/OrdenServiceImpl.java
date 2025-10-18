@@ -313,4 +313,32 @@ public class OrdenServiceImpl implements OrdenService {
                 orden.getObservaciones()
         );
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrdenDto> obtenerOrdenesPorVendedor(Long vendedorId) {
+        log.info("Obteniendo órdenes para vendedor ID: {}", vendedorId);
+
+        // Validar que el vendedor existe
+        if (!usuarioRepository.existsById(vendedorId)) {
+            throw new RuntimeException("Vendedor no encontrado con ID: " + vendedorId);
+        }
+
+        return ordenRepository.findByVendedorId(vendedorId)
+                .stream()
+                .map(ordenMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public OrdenDto marcarComoAgregandoProductos(Long id) {
+        return actualizarEstadoOrden(id, EstadoOrden.AGREGANDOPRODUCTOS);
+    }
+
+    @Override
+    @Transactional
+    public OrdenDto marcarComoDisponibleParaPago(Long id) {
+        return actualizarEstadoOrden(id, EstadoOrden.DISPONIBLEPARAPAGO);
+    }
 }

@@ -68,9 +68,9 @@ public class Orden {
                 .mapToDouble(DetalleOrden::getSubtotal)
                 .sum();
 
-        // Calcular impuestos (ejemplo: 19% sobre el subtotal - descuento)
+        // Calcular impuestos (3% sobre el subtotal - descuento)
         double baseImponible = this.subtotal - (this.descuento != null ? this.descuento : 0.0);
-        this.impuestos = baseImponible * 0.19;
+        this.impuestos = baseImponible * 0.02; // Cambiado a (2%)
 
         // Calcular total
         this.total = baseImponible + this.impuestos;

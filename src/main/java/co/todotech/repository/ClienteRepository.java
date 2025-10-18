@@ -28,4 +28,7 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     List<Cliente> findByNombreContaining(@Param("nombre") String nombre);
 
     long countByTipoCliente(TipoCliente tipoCliente);
+
+    @Query("SELECT c FROM Cliente c ORDER BY c.fechaRegistro DESC")
+    List<Cliente> findAllOrderedByFechaRegistro();
 }

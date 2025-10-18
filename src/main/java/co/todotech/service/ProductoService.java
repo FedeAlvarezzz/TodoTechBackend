@@ -26,4 +26,11 @@ public interface ProductoService {
 
     // Método para obtener todos los productos (NUEVO)
     List<ProductoDto> obtenerTodosLosProductos();
+
+    // En ProductoService.java - Agrega este método
+    void ajustarStockProducto(Long id, Integer cantidad, String operacion);
+    void incrementarStock(Long id, Integer cantidad);
+    void decrementarStock(Long id, Integer cantidad);
+    void establecerStock(Long id, Integer nuevoStock);
+    Integer consultarStock(Long id);
 }

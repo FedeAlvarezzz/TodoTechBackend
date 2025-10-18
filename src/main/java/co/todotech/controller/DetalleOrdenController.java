@@ -20,10 +20,11 @@ public class DetalleOrdenController {
 
     private final DetalleOrdenService detalleOrdenService;
 
+    // 🔹 CORREGIDO: Agregar name explícito en @PathVariable
     @PostMapping("/orden/{ordenId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
     public ResponseEntity<MensajeDto<DetalleOrdenDto>> crearDetalleOrden(
-            @PathVariable Long ordenId,
+            @PathVariable("ordenId") Long ordenId, // ← CORREGIDO AQUÍ
             @Valid @RequestBody CreateDetalleOrdenDto dto) {
         try {
             DetalleOrdenDto detalleCreado = detalleOrdenService.crearDetalleOrden(dto, ordenId);
@@ -35,7 +36,8 @@ public class DetalleOrdenController {
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<DetalleOrdenDto>> obtenerDetalleOrden(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<DetalleOrdenDto>> obtenerDetalleOrden(
+            @PathVariable("id") Long id) { // ← CORREGIDO AQUÍ
         try {
             DetalleOrdenDto dto = detalleOrdenService.obtenerDetalleOrden(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Detalle de orden encontrado", dto));
@@ -46,7 +48,8 @@ public class DetalleOrdenController {
 
     @GetMapping("/orden/{ordenId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<List<DetalleOrdenDto>>> obtenerDetallesPorOrden(@PathVariable Long ordenId) {
+    public ResponseEntity<MensajeDto<List<DetalleOrdenDto>>> obtenerDetallesPorOrden(
+            @PathVariable("ordenId") Long ordenId) { // ← CORREGIDO AQUÍ
         try {
             List<DetalleOrdenDto> lista = detalleOrdenService.obtenerDetallesPorOrden(ordenId);
             return ResponseEntity.ok(new MensajeDto<>(false, "Detalles de orden obtenidos", lista));
@@ -58,8 +61,8 @@ public class DetalleOrdenController {
     @PatchMapping("/{id}/cantidad")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
     public ResponseEntity<MensajeDto<DetalleOrdenDto>> actualizarCantidad(
-            @PathVariable Long id,
-            @RequestParam Integer cantidad) {
+            @PathVariable("id") Long id,
+            @RequestParam("cantidad") Integer cantidad) { // ← CORREGIDO AQUÍ
         try {
             DetalleOrdenDto detalleActualizado = detalleOrdenService.actualizarCantidad(id, cantidad);
             return ResponseEntity.ok(new MensajeDto<>(false, "Cantidad actualizada exitosamente", detalleActualizado));
@@ -70,8 +73,9 @@ public class DetalleOrdenController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
-    public ResponseEntity<MensajeDto<DetalleOrdenDto>> actualizarDetalleOrden(@PathVariable Long id,
-                                                                              @Valid @RequestBody DetalleOrdenDto dto) {
+    public ResponseEntity<MensajeDto<DetalleOrdenDto>> actualizarDetalleOrden(
+            @PathVariable("id") Long id, // ← CORREGIDO AQUÍ
+            @Valid @RequestBody DetalleOrdenDto dto) {
         try {
             DetalleOrdenDto detalleActualizado = detalleOrdenService.actualizarDetalleOrden(id, dto);
             return ResponseEntity.ok(new MensajeDto<>(false, "Detalle de orden actualizado exitosamente", detalleActualizado));
@@ -82,7 +86,8 @@ public class DetalleOrdenController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
-    public ResponseEntity<MensajeDto<String>> eliminarDetalleOrden(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<String>> eliminarDetalleOrden(
+            @PathVariable("id") Long id) { // ← CORREGIDO AQUÍ
         try {
             detalleOrdenService.eliminarDetalleOrden(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Detalle de orden eliminado exitosamente"));
@@ -105,8 +110,9 @@ public class DetalleOrdenController {
 
     @GetMapping("/validar-stock/{productoId}/{cantidad}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<String>> validarStockDisponible(@PathVariable Long productoId,
-                                                                     @PathVariable Integer cantidad) {
+    public ResponseEntity<MensajeDto<String>> validarStockDisponible(
+            @PathVariable("productoId") Long productoId, // ← CORREGIDO AQUÍ
+            @PathVariable("cantidad") Integer cantidad) { // ← CORREGIDO AQUÍ
         try {
             detalleOrdenService.validarStockDisponible(productoId, cantidad);
             return ResponseEntity.ok(new MensajeDto<>(false, "Stock disponible para la cantidad solicitada"));

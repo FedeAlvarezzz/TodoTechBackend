@@ -153,4 +153,16 @@ public class ClienteController {
             return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), 0L));
         }
     }
+
+
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MensajeDto<List<ClienteDto>>> obtenerTodosLosClientes() {
+        try {
+            List<ClienteDto> lista = clienteService.obtenerTodosLosClientes();
+            return ResponseEntity.ok(new MensajeDto<>(false, "Todos los clientes obtenidos exitosamente", lista));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
 }

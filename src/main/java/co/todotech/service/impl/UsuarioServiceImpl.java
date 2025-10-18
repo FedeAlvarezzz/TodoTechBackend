@@ -1,5 +1,6 @@
 package co.todotech.service.impl;
 
+import co.todotech.exception.usuario.*;
 import co.todotech.mapper.UsuarioMapper;
 import co.todotech.model.dto.usuario.LoginResponse;
 import co.todotech.model.dto.usuario.UsuarioDto;
@@ -36,21 +37,21 @@ public class UsuarioServiceImpl implements UsuarioService {
     private final TokenBlacklistService tokenBlacklistService;
 
     @Override
-    public LoginResponse login(String nombreUsuario, String contrasena) throws Exception {
+    public LoginResponse login(String nombreUsuario, String contrasena) {
         log.info("=== INICIO LOGIN ===");
         log.info("Usuario intentando login: {}", nombreUsuario);
 
         Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario)
-                .orElseThrow(() -> new Exception("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNotFoundException("Usuario no encontrado"));
 
         log.info("Usuario encontrado: {} - Email: {}", usuario.getNombreUsuario(), usuario.getCorreo());
 
         if (!passwordEncoder.matches(contrasena, usuario.getContrasena())) {
-            throw new Exception("Contraseña incorrecta");
+            throw new AuthenticationException("Contraseña incorrecta");
         }
 
         if (!usuario.isEstado()) {
-            throw new Exception("Usuario inactivo. Contacte al administrador");
+            throw new UsuarioEstadoException("Usuario inactivo. Contacte al administrador");
         }
 
         String token = jwtUtil.generateToken(
@@ -79,12 +80,12 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     @Transactional(readOnly = true)
-    public void solicitarRecordatorioContrasena(String correo) throws Exception {
+    public void solicitarRecordatorioContrasena(String correo) {
         log.info("=== INICIO RECORDATORIO CONTRASEÑA ===");
         log.info("Correo solicitante: {}", correo);
 
         if (correo == null || correo.trim().isEmpty()) {
-            throw new Exception("El correo electrónico es requerido");
+            throw new UsuarioBusinessException("El correo electrónico es requerido");
         }
 
         List<TipoUsuario> tiposPermitidos = Arrays.asList(
@@ -94,12 +95,12 @@ public class UsuarioServiceImpl implements UsuarioService {
         );
 
         Usuario usuario = usuarioRepository.findByCorreoAndTipoUsuarioIn(correo, tiposPermitidos)
-                .orElseThrow(() -> new Exception("No se encontró un usuario activo con ese correo electrónico o no tiene permisos para solicitar recordatorio"));
+                .orElseThrow(() -> new UsuarioNotFoundException("No se encontró un usuario activo con ese correo electrónico o no tiene permisos para solicitar recordatorio"));
 
         log.info("Usuario encontrado para recordatorio: {} - Email: {}", usuario.getNombreUsuario(), usuario.getCorreo());
 
         if (!usuario.isEstado()) {
-            throw new Exception("El usuario está inactivo. Contacte al administrador");
+            throw new UsuarioEstadoException("El usuario está inactivo. Contacte al administrador");
         }
 
         try {
@@ -117,24 +118,23 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         } catch (Exception e) {
             log.error("Error al enviar recordatorio de contraseña a {}: {}", correo, e.getMessage());
-            throw new Exception("Error al enviar el recordatorio por correo: " + e.getMessage());
+            throw new EmailException("Error al enviar el recordatorio por correo: " + e.getMessage());
         }
     }
 
     @Override
-    public UsuarioDto obtenerUsuarioPorId(Long id) throws Exception {
+    public UsuarioDto obtenerUsuarioPorId(Long id) {
         Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new Exception("Usuario no encontrado con ID: " + id));
+                .orElseThrow(() -> new UsuarioNotFoundException("Usuario no encontrado con ID: " + id));
         return usuarioMapper.toDto(usuario);
     }
 
     @Override
-    public UsuarioDto obtenerUsuarioPorCedula(String cedula) throws Exception {
+    public UsuarioDto obtenerUsuarioPorCedula(String cedula) {
         Usuario usuario = usuarioRepository.findByCedula(cedula)
-                .orElseThrow(() -> new Exception("Usuario no encontrado con cédula: " + cedula));
+                .orElseThrow(() -> new UsuarioNotFoundException("Usuario no encontrado con cédula: " + cedula));
         return usuarioMapper.toDto(usuario);
     }
-
 
     private void notificarIngresoAdmin(Usuario admin) {
         try {
@@ -151,14 +151,15 @@ public class UsuarioServiceImpl implements UsuarioService {
         } catch (Exception e) {
             log.error("Error al enviar notificación de ingreso al admin {}: {}",
                     admin.getNombreUsuario(), e.getMessage());
+            // No lanzamos excepción aquí para no afectar el login
         }
     }
 
     @Override
     @Transactional
-    public void cambiarEstadoUsuario(Long id, boolean estado) throws Exception {
+    public void cambiarEstadoUsuario(Long id, boolean estado) {
         Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new Exception("Usuario no encontrado con ID: " + id));
+                .orElseThrow(() -> new UsuarioNotFoundException("Usuario no encontrado con ID: " + id));
 
         usuario.setEstado(estado);
         usuarioRepository.save(usuario);
@@ -168,24 +169,24 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     @Transactional
-    public void crearUsuario(UsuarioDto dto) throws Exception {
+    public void crearUsuario(UsuarioDto dto) {
         log.info("Creando usuario: {}", dto.getNombreUsuario());
 
         if (usuarioRepository.existsByCedula(dto.getCedula())) {
-            throw new Exception("Ya existe un usuario con la cédula: " + dto.getCedula());
+            throw new UsuarioDuplicateException("Ya existe un usuario con la cédula: " + dto.getCedula());
         }
 
         if (usuarioRepository.existsByCorreo(dto.getCorreo())) {
-            throw new Exception("Ya existe un usuario con el correo: " + dto.getCorreo());
+            throw new UsuarioDuplicateException("Ya existe un usuario con el correo: " + dto.getCorreo());
         }
 
         if (usuarioRepository.existsByNombreUsuario(dto.getNombreUsuario())) {
-            throw new Exception("Ya existe un usuario con el nombre de usuario: " + dto.getNombreUsuario());
+            throw new UsuarioDuplicateException("Ya existe un usuario con el nombre de usuario: " + dto.getNombreUsuario());
         }
 
         // Validar que la contraseña no sea nula o vacía al crear usuario
         if (dto.getContrasena() == null || dto.getContrasena().trim().isEmpty()) {
-            throw new Exception("La contraseña es requerida para crear un usuario");
+            throw new UsuarioBusinessException("La contraseña es requerida para crear un usuario");
         }
 
         Usuario usuario = usuarioMapper.toEntity(dto);
@@ -201,24 +202,24 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     @Transactional
-    public void actualizarUsuario(Long id, UsuarioDto dto) throws Exception {
+    public void actualizarUsuario(Long id, UsuarioDto dto) {
         Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new Exception("Usuario no encontrado con ID: " + id));
+                .orElseThrow(() -> new UsuarioNotFoundException("Usuario no encontrado con ID: " + id));
 
         // Verificar si la cédula/correo ya existen en otros usuarios
         if (!usuario.getCedula().equals(dto.getCedula()) &&
                 usuarioRepository.existsByCedulaAndIdNot(dto.getCedula(), id)) {
-            throw new Exception("Ya existe otro usuario con la cédula: " + dto.getCedula());
+            throw new UsuarioDuplicateException("Ya existe otro usuario con la cédula: " + dto.getCedula());
         }
 
         if (!usuario.getCorreo().equals(dto.getCorreo()) &&
                 usuarioRepository.existsByCorreoAndIdNot(dto.getCorreo(), id)) {
-            throw new Exception("Ya existe otro usuario con el correo: " + dto.getCorreo());
+            throw new UsuarioDuplicateException("Ya existe otro usuario con el correo: " + dto.getCorreo());
         }
 
         if (!usuario.getNombreUsuario().equals(dto.getNombreUsuario()) &&
                 usuarioRepository.existsByNombreUsuarioAndIdNot(dto.getNombreUsuario(), id)) {
-            throw new Exception("Ya existe otro usuario con el nombre de usuario: " + dto.getNombreUsuario());
+            throw new UsuarioDuplicateException("Ya existe otro usuario con el nombre de usuario: " + dto.getNombreUsuario());
         }
 
         // Actualizar campos EXCEPTO la contraseña
@@ -232,7 +233,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 usuario.setContrasena(contrasenaEncriptada);
                 log.info("Contraseña actualizada para usuario ID: {}", id);
             } else {
-                throw new Exception("Se solicitó cambiar contraseña pero no se proporcionó una nueva contraseña");
+                throw new UsuarioBusinessException("Se solicitó cambiar contraseña pero no se proporcionó una nueva contraseña");
             }
         }
 
@@ -242,19 +243,19 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     @Transactional
-    public void eliminarUsuario(Long id) throws Exception {
+    public void eliminarUsuario(Long id) {
         Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new Exception("Usuario no encontrado con ID: " + id));
+                .orElseThrow(() -> new UsuarioNotFoundException("Usuario no encontrado con ID: " + id));
 
         usuarioRepository.delete(usuario);
         log.info("Usuario eliminado físicamente: {}", id);
     }
 
     @Override
-    public List<UsuarioDto> obtenerUsuariosPorTipo(TipoUsuario tipoUsuario) throws Exception {
+    public List<UsuarioDto> obtenerUsuariosPorTipo(TipoUsuario tipoUsuario) {
         List<Usuario> usuarios = usuarioRepository.findByTipoUsuario(tipoUsuario);
         if (usuarios.isEmpty()) {
-            throw new Exception("No se encontraron usuarios del tipo: " + tipoUsuario);
+            throw new UsuarioNotFoundException("No se encontraron usuarios del tipo: " + tipoUsuario);
         }
         return usuarios.stream()
                 .map(usuarioMapper::toDto)
@@ -262,10 +263,10 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
-    public List<UsuarioDto> buscarUsuariosPorNombre(String nombre) throws Exception {
+    public List<UsuarioDto> buscarUsuariosPorNombre(String nombre) {
         List<Usuario> usuarios = usuarioRepository.findByNombreContainingIgnoreCase(nombre);
         if (usuarios.isEmpty()) {
-            throw new Exception("No se encontraron usuarios con el nombre: " + nombre);
+            throw new UsuarioNotFoundException("No se encontraron usuarios con el nombre: " + nombre);
         }
         return usuarios.stream()
                 .map(usuarioMapper::toDto)
@@ -273,13 +274,13 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
-    public List<UsuarioDto> buscarUsuariosPorCedula(String cedula) throws Exception {
+    public List<UsuarioDto> buscarUsuariosPorCedula(String cedula) {
         List<Usuario> usuarios = usuarioRepository.findByCedulaContaining(cedula);
         if (usuarios.isEmpty()) {
-            throw new Exception("No se encontraron usuarios con la cédula: " + cedula);
+            throw new UsuarioNotFoundException("No se encontraron usuarios con la cédula: " + cedula);
         }
         return usuarios.stream()
-                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
+                .map(usuarioMapper::toDtoSafe)
                 .collect(Collectors.toList());
     }
 
@@ -326,54 +327,54 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         } catch (Exception e) {
             log.error("Error en obtenerTodosLosUsuarios: {}", e.getMessage(), e);
-            throw e;
+            throw new UsuarioBusinessException("Error al obtener la lista de usuarios: " + e.getMessage());
         }
     }
 
     @Override
     public List<UsuarioDto> obtenerUsuariosActivos() {
         return usuarioRepository.findByEstado(true).stream()
-                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
+                .map(usuarioMapper::toDtoSafe)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<UsuarioDto> obtenerUsuariosInactivos() {
         return usuarioRepository.findByEstado(false).stream()
-                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
+                .map(usuarioMapper::toDtoSafe)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<UsuarioDto> obtenerUsuariosPorFechaCreacion(LocalDateTime fechaInicio, LocalDateTime fechaFin) throws Exception {
+    public List<UsuarioDto> obtenerUsuariosPorFechaCreacion(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<Usuario> usuarios = usuarioRepository.findByFechaCreacionBetween(fechaInicio, fechaFin);
         if (usuarios.isEmpty()) {
-            throw new Exception("No se encontraron usuarios en el rango de fechas especificado");
+            throw new UsuarioNotFoundException("No se encontraron usuarios en el rango de fechas especificado");
         }
         return usuarios.stream()
-                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
+                .map(usuarioMapper::toDtoSafe)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<UsuarioDto> obtenerUsuariosCreadosDespuesDe(LocalDateTime fecha) throws Exception {
+    public List<UsuarioDto> obtenerUsuariosCreadosDespuesDe(LocalDateTime fecha) {
         List<Usuario> usuarios = usuarioRepository.findByFechaCreacionAfter(fecha);
         if (usuarios.isEmpty()) {
-            throw new Exception("No se encontraron usuarios creados después de: " + fecha);
+            throw new UsuarioNotFoundException("No se encontraron usuarios creados después de: " + fecha);
         }
         return usuarios.stream()
-                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
+                .map(usuarioMapper::toDtoSafe)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<UsuarioDto> obtenerUsuariosCreadosAntesDe(LocalDateTime fecha) throws Exception {
+    public List<UsuarioDto> obtenerUsuariosCreadosAntesDe(LocalDateTime fecha) {
         List<Usuario> usuarios = usuarioRepository.findByFechaCreacionBefore(fecha);
         if (usuarios.isEmpty()) {
-            throw new Exception("No se encontraron usuarios creados antes de: " + fecha);
+            throw new UsuarioNotFoundException("No se encontraron usuarios creados antes de: " + fecha);
         }
         return usuarios.stream()
-                .map(usuarioMapper::toDtoSafe) // ← Cambiado a método seguro
+                .map(usuarioMapper::toDtoSafe)
                 .collect(Collectors.toList());
     }
 }

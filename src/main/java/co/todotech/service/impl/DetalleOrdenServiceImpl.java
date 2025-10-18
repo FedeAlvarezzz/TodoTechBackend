@@ -1,5 +1,9 @@
 package co.todotech.service.impl;
 
+import co.todotech.exception.detalleorden.*;
+
+import co.todotech.exception.ordenventa.OrdenNotFoundException;
+import co.todotech.exception.producto.ProductoNotFoundException;
 import co.todotech.mapper.DetalleOrdenMapper;
 import co.todotech.model.dto.detalleorden.CreateDetalleOrdenDto;
 import co.todotech.model.dto.detalleorden.DetalleOrdenDto;
@@ -37,17 +41,21 @@ public class DetalleOrdenServiceImpl implements DetalleOrdenService {
         log.info("Creando detalle de orden para orden ID: {} y producto ID: {}",
                 ordenId, createDetalleOrdenDto.productoId());
 
-        // Validar que la orden existe y está en estado PENDIENTE
+        // Validar que la orden existe y está en estado permitido
         Orden orden = ordenRepository.findById(ordenId)
-                .orElseThrow(() -> new RuntimeException("Orden no encontrada con ID: " + ordenId));
+                .orElseThrow(() -> new OrdenNotFoundException(ordenId));
 
-        if (orden.getEstado() != EstadoOrden.PENDIENTE) {
-            throw new RuntimeException("Solo se pueden agregar detalles a órdenes en estado PENDIENTE. Estado actual: " + orden.getEstado());
+        // Permitir tanto PENDIENTE como AGREGANDOPRODUCTOS
+        if (orden.getEstado() != EstadoOrden.PENDIENTE && orden.getEstado() != EstadoOrden.AGREGANDOPRODUCTOS) {
+            throw new DetalleOrdenEstadoException(
+                    "Solo se pueden agregar detalles a órdenes en estado PENDIENTE o AGREGANDOPRODUCTOS. Estado actual: " + orden.getEstado(),
+                    "PENDIENTE o AGREGANDOPRODUCTOS"
+            );
         }
 
         // Validar que el producto existe
         Producto producto = productoRepository.findById(createDetalleOrdenDto.productoId())
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + createDetalleOrdenDto.productoId()));
+                .orElseThrow(() -> new ProductoNotFoundException(createDetalleOrdenDto.productoId()));
 
         // Validar stock disponible y estado del producto
         validarStockDisponible(createDetalleOrdenDto.productoId(), createDetalleOrdenDto.cantidad());
@@ -55,7 +63,7 @@ public class DetalleOrdenServiceImpl implements DetalleOrdenService {
         // Verificar si ya existe un detalle para este producto en la orden
         detalleOrdenRepository.findByOrdenIdAndProductoId(ordenId, createDetalleOrdenDto.productoId())
                 .ifPresent(existingDetail -> {
-                    throw new RuntimeException("Ya existe un detalle para este producto en la orden. Use actualizar cantidad en su lugar.");
+                    throw new DetalleOrdenDuplicateException(ordenId, createDetalleOrdenDto.productoId());
                 });
 
         // Crear el detalle de orden
@@ -87,7 +95,7 @@ public class DetalleOrdenServiceImpl implements DetalleOrdenService {
         log.info("Obteniendo detalle de orden con ID: {}", id);
 
         DetalleOrden detalleOrden = detalleOrdenRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Detalle de orden no encontrado con ID: " + id));
+                .orElseThrow(() -> new DetalleOrdenNotFoundException(id));
 
         return detalleOrdenMapper.toDto(detalleOrden);
     }
@@ -99,11 +107,17 @@ public class DetalleOrdenServiceImpl implements DetalleOrdenService {
 
         // Validar que la orden existe
         if (!ordenRepository.existsById(ordenId)) {
-            throw new RuntimeException("Orden no encontrada con ID: " + ordenId);
+            throw new OrdenNotFoundException(ordenId);
         }
 
-        return detalleOrdenRepository.findByOrdenId(ordenId)
-                .stream()
+        List<DetalleOrden> detalles = detalleOrdenRepository.findByOrdenId(ordenId);
+
+        // Validar que hay detalles para esta orden
+        if (detalles.isEmpty()) {
+            throw new DetallesNoEncontradosException(ordenId);
+        }
+
+        return detalles.stream()
                 .map(detalleOrdenMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -114,15 +128,19 @@ public class DetalleOrdenServiceImpl implements DetalleOrdenService {
         log.info("Actualizando cantidad del detalle ID: {} a {}", detalleId, nuevaCantidad);
 
         if (nuevaCantidad <= 0) {
-            throw new RuntimeException("La cantidad debe ser mayor a 0");
+            throw new DetalleOrdenBusinessException("La cantidad debe ser mayor a 0");
         }
 
         DetalleOrden detalleOrden = detalleOrdenRepository.findById(detalleId)
-                .orElseThrow(() -> new RuntimeException("Detalle de orden no encontrado con ID: " + detalleId));
+                .orElseThrow(() -> new DetalleOrdenNotFoundException(detalleId));
 
-        // Validar que la orden esté en estado PENDIENTE
-        if (detalleOrden.getOrden().getEstado() != EstadoOrden.PENDIENTE) {
-            throw new RuntimeException("Solo se pueden modificar detalles de órdenes en estado PENDIENTE");
+        // Validar que la orden esté en estado permitido
+        if (detalleOrden.getOrden().getEstado() != EstadoOrden.PENDIENTE &&
+                detalleOrden.getOrden().getEstado() != EstadoOrden.AGREGANDOPRODUCTOS) {
+            throw new DetalleOrdenEstadoException(
+                    "Solo se pueden modificar detalles de órdenes en estado PENDIENTE o AGREGANDOPRODUCTOS",
+                    "PENDIENTE o AGREGANDOPRODUCTOS"
+            );
         }
 
         // Validar stock disponible para la nueva cantidad
@@ -149,11 +167,15 @@ public class DetalleOrdenServiceImpl implements DetalleOrdenService {
         log.info("Actualizando detalle de orden con ID: {}", id);
 
         DetalleOrden detalleExistente = detalleOrdenRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Detalle de orden no encontrado con ID: " + id));
+                .orElseThrow(() -> new DetalleOrdenNotFoundException(id));
 
-        // Validar que la orden esté en estado PENDIENTE
-        if (detalleExistente.getOrden().getEstado() != EstadoOrden.PENDIENTE) {
-            throw new RuntimeException("Solo se pueden modificar detalles de órdenes en estado PENDIENTE");
+        // Validar que la orden esté en estado permitido
+        if (detalleExistente.getOrden().getEstado() != EstadoOrden.PENDIENTE &&
+                detalleExistente.getOrden().getEstado() != EstadoOrden.AGREGANDOPRODUCTOS) {
+            throw new DetalleOrdenEstadoException(
+                    "Solo se pueden modificar detalles de órdenes en estado PENDIENTE o AGREGANDOPRODUCTOS",
+                    "PENDIENTE o AGREGANDOPRODUCTOS"
+            );
         }
 
         // Validar stock si se está actualizando la cantidad
@@ -182,11 +204,15 @@ public class DetalleOrdenServiceImpl implements DetalleOrdenService {
         log.info("Eliminando detalle de orden con ID: {}", id);
 
         DetalleOrden detalleOrden = detalleOrdenRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Detalle de orden no encontrado con ID: " + id));
+                .orElseThrow(() -> new DetalleOrdenNotFoundException(id));
 
-        // Validar que la orden esté en estado PENDIENTE
-        if (detalleOrden.getOrden().getEstado() != EstadoOrden.PENDIENTE) {
-            throw new RuntimeException("Solo se pueden eliminar detalles de órdenes en estado PENDIENTE");
+        // Validar que la orden esté en estado permitido
+        if (detalleOrden.getOrden().getEstado() != EstadoOrden.PENDIENTE &&
+                detalleOrden.getOrden().getEstado() != EstadoOrden.AGREGANDOPRODUCTOS) {
+            throw new DetalleOrdenEstadoException(
+                    "Solo se pueden eliminar detalles de órdenes en estado PENDIENTE o AGREGANDOPRODUCTOS",
+                    "PENDIENTE o AGREGANDOPRODUCTOS"
+            );
         }
 
         Orden orden = detalleOrden.getOrden();
@@ -212,7 +238,8 @@ public class DetalleOrdenServiceImpl implements DetalleOrdenService {
 
         DetalleOrden detalleOrden = detalleOrdenRepository.findByOrdenIdAndProductoId(
                         request.ordenVentaId(), request.productoId())
-                .orElseThrow(() -> new RuntimeException("Detalle de orden no encontrado para el producto y orden especificados"));
+                .orElseThrow(() -> new DetalleOrdenNotFoundException(
+                        request.ordenVentaId(), request.productoId()));
 
         eliminarDetalleOrden(detalleOrden.getId());
     }
@@ -223,11 +250,11 @@ public class DetalleOrdenServiceImpl implements DetalleOrdenService {
         log.debug("Validando stock para producto ID: {}, cantidad requerida: {}", productoId, cantidadRequerida);
 
         Producto producto = productoRepository.findById(productoId)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + productoId));
+                .orElseThrow(() -> new ProductoNotFoundException(productoId));
 
         // Validar estado del producto
         if (producto.getEstado() != EstadoProducto.ACTIVO) {
-            throw new RuntimeException(
+            throw new DetalleOrdenBusinessException(
                     String.format("El producto '%s' no está disponible para la venta. Estado actual: %s",
                             producto.getNombre(), producto.getEstado())
             );
@@ -235,7 +262,7 @@ public class DetalleOrdenServiceImpl implements DetalleOrdenService {
 
         // Validar stock disponible
         if (producto.getStock() < cantidadRequerida) {
-            throw new RuntimeException(
+            throw new DetalleOrdenBusinessException(
                     String.format("Stock insuficiente para el producto '%s'. Stock disponible: %d, Cantidad requerida: %d",
                             producto.getNombre(), producto.getStock(), cantidadRequerida)
             );

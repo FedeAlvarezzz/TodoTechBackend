@@ -139,4 +139,12 @@ public class ClienteServiceImpl implements ClienteService {
     public long contarClientesPorTipo(TipoCliente tipoCliente) {
         return clienteRepository.countByTipoCliente(tipoCliente);
     }
+
+    @Override
+    public List<ClienteDto> obtenerTodosLosClientes() {
+        log.info("Obteniendo todos los clientes");
+        return clienteRepository.findAllOrderedByFechaRegistro().stream()
+                .map(clienteMapper::toDto)
+                .collect(Collectors.toList());
+    }
 }

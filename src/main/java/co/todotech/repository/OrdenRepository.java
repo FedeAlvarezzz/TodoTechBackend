@@ -46,4 +46,6 @@ public interface OrdenRepository extends JpaRepository<Orden, Long> {
     @Query("SELECT o FROM Orden o WHERE o.fecha BETWEEN :fechaInicio AND :fechaFin")
     List<Orden> findByFechaBetween(@Param("fechaInicio") LocalDateTime fechaInicio,
                                    @Param("fechaFin") LocalDateTime fechaFin);
+
+
 }

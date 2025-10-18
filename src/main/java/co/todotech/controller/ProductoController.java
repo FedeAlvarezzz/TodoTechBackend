@@ -1,7 +1,10 @@
 package co.todotech.controller;
 
 import co.todotech.model.dto.MensajeDto;
+import co.todotech.model.dto.producto.AjusteStockRequest;
+import co.todotech.model.dto.producto.CantidadRequest;
 import co.todotech.model.dto.producto.ProductoDto;
+import co.todotech.model.dto.producto.StockResponse;
 import co.todotech.model.enums.EstadoProducto;
 import co.todotech.service.ProductoService;
 import jakarta.validation.Valid;
@@ -43,42 +46,42 @@ public class ProductoController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<MensajeDto<String>> eliminarProducto(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<String>> eliminarProducto(@PathVariable("id") Long id) {
         productoService.eliminarProducto(id);
         return ResponseEntity.ok(new MensajeDto<>(false, "Producto eliminado exitosamente"));
     }
 
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<MensajeDto<String>> cambiarEstadoProducto(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<String>> cambiarEstadoProducto(@PathVariable("id") Long id) {
         productoService.cambiarEstadoProducto(id);
         return ResponseEntity.ok(new MensajeDto<>(false, "Estado del producto actualizado"));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<ProductoDto>> obtenerProductoPorId(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<ProductoDto>> obtenerProductoPorId(@PathVariable("id") Long id) {
         ProductoDto dto = productoService.obtenerProductoPorId(id);
         return ResponseEntity.ok(new MensajeDto<>(false, "Producto encontrado", dto));
     }
 
     @GetMapping("/codigo/{codigo}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<ProductoDto>> obtenerProductoPorCodigo(@PathVariable String codigo) {
+    public ResponseEntity<MensajeDto<ProductoDto>> obtenerProductoPorCodigo(@PathVariable("codigo") String codigo) {
         ProductoDto dto = productoService.obtenerProductoPorCodigo(codigo);
         return ResponseEntity.ok(new MensajeDto<>(false, "Producto encontrado por código", dto));
     }
 
     @GetMapping("/nombre/{nombre}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<ProductoDto>> obtenerProductoPorNombre(@PathVariable String nombre) {
+    public ResponseEntity<MensajeDto<ProductoDto>> obtenerProductoPorNombre(@PathVariable("nombre") String nombre) {
         ProductoDto dto = productoService.obtenerProductoPorNombre(nombre);
         return ResponseEntity.ok(new MensajeDto<>(false, "Producto encontrado por nombre", dto));
     }
 
     @GetMapping("/estado/{estado}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<List<ProductoDto>>> obtenerProductoPorEstado(@PathVariable String estado) {
+    public ResponseEntity<MensajeDto<List<ProductoDto>>> obtenerProductoPorEstado(@PathVariable("estado") String estado) {
         try {
             EstadoProducto ep = EstadoProducto.valueOf(estado.toUpperCase());
             List<ProductoDto> lista = productoService.obtenerProductoPorEstado(ep);
@@ -91,7 +94,7 @@ public class ProductoController {
 
     @GetMapping("/categoria/{categoriaId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<List<ProductoDto>>> obtenerProductoPorCategoria(@PathVariable Long categoriaId) {
+    public ResponseEntity<MensajeDto<List<ProductoDto>>> obtenerProductoPorCategoria(@PathVariable("categoriaId") Long categoriaId) {
         List<ProductoDto> lista = productoService.obtenerProductoPorCategoriaId(categoriaId);
         return ResponseEntity.ok(new MensajeDto<>(false, "Productos por categoría obtenidos", lista));
     }
@@ -112,8 +115,52 @@ public class ProductoController {
 
     @GetMapping("/buscar")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<List<ProductoDto>>> buscarProductosPorNombre(@RequestParam String nombre) {
+    public ResponseEntity<MensajeDto<List<ProductoDto>>> buscarProductosPorNombre(@RequestParam("nombre") String nombre) {
         List<ProductoDto> lista = productoService.buscarProductosPorNombre(nombre);
         return ResponseEntity.ok(new MensajeDto<>(false, "Búsqueda completada", lista));
+    }
+    @PatchMapping("/{id}/stock/incrementar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    public ResponseEntity<MensajeDto<String>> incrementarStock(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody CantidadRequest request) {
+        productoService.incrementarStock(id, request.getCantidad());
+        return ResponseEntity.ok(new MensajeDto<>(false, "Stock incrementado exitosamente"));
+    }
+
+    @PatchMapping("/{id}/stock/decrementar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    public ResponseEntity<MensajeDto<String>> decrementarStock(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody CantidadRequest request) {
+        productoService.decrementarStock(id, request.getCantidad());
+        return ResponseEntity.ok(new MensajeDto<>(false, "Stock decrementado exitosamente"));
+    }
+
+    @PatchMapping("/{id}/stock")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    public ResponseEntity<MensajeDto<String>> establecerStock(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody CantidadRequest request) {
+        productoService.establecerStock(id, request.getCantidad());
+        return ResponseEntity.ok(new MensajeDto<>(false, "Stock establecido exitosamente"));
+    }
+
+    @PatchMapping("/{id}/stock/ajustar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    public ResponseEntity<MensajeDto<String>> ajustarStock(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody AjusteStockRequest request) {
+        productoService.ajustarStockProducto(id, request.getCantidad(), request.getOperacion());
+        return ResponseEntity.ok(new MensajeDto<>(false, "Stock ajustado exitosamente"));
+    }
+
+    @GetMapping("/{id}/stock")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MensajeDto<StockResponse>> consultarStock(@PathVariable("id") Long id) {
+        Integer stock = productoService.consultarStock(id);
+        ProductoDto producto = productoService.obtenerProductoPorId(id);
+        StockResponse response = new StockResponse(id, stock, producto.getNombre(), producto.getEstado().toString());
+        return ResponseEntity.ok(new MensajeDto<>(false, "Stock consultado exitosamente", response));
     }
 }
