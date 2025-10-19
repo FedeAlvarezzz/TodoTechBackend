@@ -47,6 +47,7 @@ public class OrdenServiceImpl implements OrdenService {
     @Transactional
     public OrdenDto crearOrden(CreateOrdenDto createOrdenDto) {
         log.info("Creando nueva orden para cliente: {}", createOrdenDto.clienteId());
+        log.info("Descuento aplicado: {}", createOrdenDto.descuento());
 
         // Validar que el cliente existe
         Cliente cliente = clienteRepository.findById(createOrdenDto.clienteId())
@@ -56,7 +57,10 @@ public class OrdenServiceImpl implements OrdenService {
         Usuario vendedor = usuarioRepository.findById(createOrdenDto.vendedorId())
                 .orElseThrow(() -> new RuntimeException("Vendedor no encontrado con ID: " + createOrdenDto.vendedorId()));
 
-        // Crear la orden con valores iniciales en cero
+        // ✅ CORREGIDO: Usar el descuento proporcionado en el DTO
+        Double descuentoAplicar = createOrdenDto.descuento() != null ? createOrdenDto.descuento() : 0.0;
+
+        // Crear la orden con el descuento proporcionado
         Orden orden = Orden.builder()
                 .numeroOrden(generarNumeroOrden())
                 .fecha(LocalDateTime.now())
@@ -65,14 +69,14 @@ public class OrdenServiceImpl implements OrdenService {
                 .productos(new ArrayList<>()) // Lista vacía de detalles
                 .estado(EstadoOrden.PENDIENTE)
                 .subtotal(0.0)
-                .descuento(0.0)
+                .descuento(descuentoAplicar) // ✅ CORREGIDO: Usar el descuento del DTO
                 .impuestos(0.0)
                 .total(0.0)
                 .observaciones(null)
                 .build();
 
         Orden ordenGuardada = ordenRepository.save(orden);
-        log.info("Orden creada exitosamente con ID: {}", ordenGuardada.getId());
+        log.info("Orden creada exitosamente con ID: {}, Descuento: {}", ordenGuardada.getId(), ordenGuardada.getDescuento());
 
         return ordenMapper.toDto(ordenGuardada);
     }
