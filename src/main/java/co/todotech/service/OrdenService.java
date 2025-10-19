@@ -11,6 +11,8 @@ public interface OrdenService {
 
     OrdenDto crearOrden(CreateOrdenDto createOrdenDto);
 
+    OrdenDto quitarDescuento(Long ordenId);
+
     OrdenConDetallesDto obtenerOrdenConDetalles(Long id);
 
     OrdenDto obtenerOrden(Long id);
@@ -40,4 +42,6 @@ public interface OrdenService {
 
     OrdenDto marcarComoAgregandoProductos(Long id);
     OrdenDto marcarComoDisponibleParaPago(Long id);
+
+    OrdenDto actualizarTotalOrden(Long ordenId, Double nuevoTotal);
 }

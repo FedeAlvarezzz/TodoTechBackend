@@ -7,6 +7,7 @@ import co.todotech.model.dto.ordenventa.OrdenDto;
 import co.todotech.model.enums.EstadoOrden;
 import co.todotech.service.OrdenService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -209,6 +210,20 @@ public class OrdenController {
         try {
             OrdenDto ordenActualizada = ordenService.marcarComoDisponibleParaPago(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Orden marcada como disponible para pago", ordenActualizada));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    // ✅ CORREGIDO: Agregar nombre explícito al @RequestParam
+    @PatchMapping("/{id}/total")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
+    public ResponseEntity<MensajeDto<OrdenDto>> actualizarTotalOrden(
+            @PathVariable("id") Long id,
+            @RequestParam("total") @PositiveOrZero(message = "El total debe ser mayor o igual a 0") Double total) {
+        try {
+            OrdenDto ordenActualizada = ordenService.actualizarTotalOrden(id, total);
+            return ResponseEntity.ok(new MensajeDto<>(false, "Total de orden actualizado exitosamente", ordenActualizada));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
         }

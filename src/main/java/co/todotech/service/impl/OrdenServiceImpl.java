@@ -43,40 +43,49 @@ public class OrdenServiceImpl implements OrdenService {
     private final ClienteMapper clienteMapper;
     private final UsuarioMapper usuarioMapper;
 
+
     @Override
     @Transactional
     public OrdenDto crearOrden(CreateOrdenDto createOrdenDto) {
         log.info("Creando nueva orden para cliente: {}", createOrdenDto.clienteId());
-        log.info("Descuento aplicado: {}", createOrdenDto.descuento());
+        log.info("Descuento recibido en DTO: {}", createOrdenDto.descuento());
 
-        // Validar que el cliente existe
         Cliente cliente = clienteRepository.findById(createOrdenDto.clienteId())
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado con ID: " + createOrdenDto.clienteId()));
 
-        // Validar que el vendedor existe
         Usuario vendedor = usuarioRepository.findById(createOrdenDto.vendedorId())
                 .orElseThrow(() -> new RuntimeException("Vendedor no encontrado con ID: " + createOrdenDto.vendedorId()));
 
-        // ✅ CORREGIDO: Usar el descuento proporcionado en el DTO
-        Double descuentoAplicar = createOrdenDto.descuento() != null ? createOrdenDto.descuento() : 0.0;
+        // ✅ CONVERTIR: Si el descuento es porcentaje (0-100), convertirlo a monto
+        Double descuentoAplicar = createOrdenDto.descuento();
 
-        // Crear la orden con el descuento proporcionado
+        // Si el descuento es <= 100, asumimos que es porcentaje
+        if (descuentoAplicar != null && descuentoAplicar <= 100) {
+            log.info("Descuento interpretado como porcentaje: {}%", descuentoAplicar);
+            // El monto real se calculará cuando se agreguen productos
+            // Por ahora guardamos el porcentaje
+        }
+
         Orden orden = Orden.builder()
                 .numeroOrden(generarNumeroOrden())
                 .fecha(LocalDateTime.now())
                 .cliente(cliente)
                 .vendedor(vendedor)
-                .productos(new ArrayList<>()) // Lista vacía de detalles
+                .productos(new ArrayList<>())
                 .estado(EstadoOrden.PENDIENTE)
                 .subtotal(0.0)
-                .descuento(descuentoAplicar) // ✅ CORREGIDO: Usar el descuento del DTO
+                .descuento(descuentoAplicar) // ✅ Puede ser porcentaje o monto
                 .impuestos(0.0)
                 .total(0.0)
                 .observaciones(null)
                 .build();
 
+        log.info("Orden antes de guardar - Descuento: {}", orden.getDescuento());
+
         Orden ordenGuardada = ordenRepository.save(orden);
-        log.info("Orden creada exitosamente con ID: {}, Descuento: {}", ordenGuardada.getId(), ordenGuardada.getDescuento());
+
+        log.info("Orden guardada en BD - ID: {}, Descuento: {}",
+                ordenGuardada.getId(), ordenGuardada.getDescuento());
 
         return ordenMapper.toDto(ordenGuardada);
     }
@@ -89,7 +98,6 @@ public class OrdenServiceImpl implements OrdenService {
         Orden orden = ordenRepository.findByIdWithDetalles(id)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada con ID: " + id));
 
-        // Mapear a DTO con detalles usando los mappers
         return mapToOrdenConDetallesDto(orden);
     }
 
@@ -131,22 +139,29 @@ public class OrdenServiceImpl implements OrdenService {
     public OrdenDto actualizarOrden(Long id, OrdenDto ordenDto) {
         log.info("Actualizando orden con ID: {}", id);
 
-        Orden ordenExistente = ordenRepository.findById(id)
+        // ✅ CORREGIDO: Cargar con detalles para cálculos precisos
+        Orden ordenExistente = ordenRepository.findByIdWithDetalles(id)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada con ID: " + id));
 
-        // Validar que no se esté intentando modificar una orden ya CERRADA
-        if (ordenExistente.getEstado() == EstadoOrden.CERRADA) {
-            throw new RuntimeException("No se puede modificar una orden en estado CERRADA");
+        // ✅ CORREGIDO: Usar el nuevo método de validación de la entidad
+        if (!ordenExistente.puedeSerModificada()) {
+            throw new RuntimeException("No se puede modificar una orden en estado: " + ordenExistente.getEstado());
         }
 
-        // Actualizar campos permitidos
+        // ✅ CORREGIDO: Validar descuento antes de actualizar
+        if (ordenDto.descuento() != null && ordenDto.descuento() < 0) {
+            throw new RuntimeException("El descuento no puede ser negativo");
+        }
+
+        // ✅ CORREGIDO: Usar mapper que NO ignora el descuento
         ordenMapper.updateOrdenFromDto(ordenDto, ordenExistente);
 
-        // Recalcular totales si hay cambios que los afecten
+        // Recalcular totales automáticamente
         ordenExistente.calcularTotales();
 
         Orden ordenActualizada = ordenRepository.save(ordenExistente);
-        log.info("Orden actualizada exitosamente con ID: {}", ordenActualizada.getId());
+        log.info("Orden actualizada exitosamente con ID: {}, Descuento: {}, Total: {}",
+                ordenActualizada.getId(), ordenActualizada.getDescuento(), ordenActualizada.getTotal());
 
         return ordenMapper.toDto(ordenActualizada);
     }
@@ -156,24 +171,19 @@ public class OrdenServiceImpl implements OrdenService {
     public OrdenDto actualizarEstadoOrden(Long id, EstadoOrden nuevoEstado) {
         log.info("Actualizando estado de orden ID: {} a {}", id, nuevoEstado);
 
-        Orden orden = ordenRepository.findById(id)
+        Orden orden = ordenRepository.findByIdWithDetalles(id)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada con ID: " + id));
 
-        // Validar transiciones de estado
         validarTransicionEstado(orden.getEstado(), nuevoEstado);
 
         orden.setEstado(nuevoEstado);
 
-        // Si la orden se marca como PAGADA, ENTREGADA o CERRADA, podemos realizar acciones adicionales
         if (nuevoEstado == EstadoOrden.PAGADA) {
             log.info("Orden ID: {} marcada como pagada", id);
-            // Aquí podrías integrar con sistema de pagos, enviar notificaciones, etc.
         } else if (nuevoEstado == EstadoOrden.ENTREGADA) {
             log.info("Orden ID: {} marcada como entregada", id);
-            // Aquí podrías actualizar inventario, enviar notificaciones de entrega, etc.
         } else if (nuevoEstado == EstadoOrden.CERRADA) {
             log.info("Orden ID: {} marcada como cerrada", id);
-            // Orden completada completamente, posiblemente generar factura
         }
 
         Orden ordenActualizada = ordenRepository.save(orden);
@@ -190,7 +200,6 @@ public class OrdenServiceImpl implements OrdenService {
         Orden orden = ordenRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada con ID: " + id));
 
-        // Validar que solo se puedan eliminar órdenes en estado PENDIENTE
         if (orden.getEstado() != EstadoOrden.PENDIENTE) {
             throw new RuntimeException("Solo se pueden eliminar órdenes en estado PENDIENTE. Estado actual: " + orden.getEstado());
         }
@@ -204,28 +213,67 @@ public class OrdenServiceImpl implements OrdenService {
     public OrdenDto aplicarDescuento(Long ordenId, Double porcentajeDescuento) {
         log.info("Aplicando descuento del {}% a orden ID: {}", porcentajeDescuento, ordenId);
 
-        Orden orden = ordenRepository.findById(ordenId)
+        // ✅ CORREGIDO: Cargar con detalles para cálculo preciso
+        Orden orden = ordenRepository.findByIdWithDetalles(ordenId)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada con ID: " + ordenId));
 
-        // Validar que la orden esté en estado PENDIENTE para aplicar descuentos
-        if (orden.getEstado() != EstadoOrden.PENDIENTE) {
-            throw new RuntimeException("Solo se pueden aplicar descuentos a órdenes en estado PENDIENTE");
+        // ✅ CORREGIDO: Usar el nuevo método de validación de la entidad
+        if (!orden.puedeAplicarDescuento()) {
+            throw new RuntimeException("No se pueden aplicar descuentos a órdenes en estado: " + orden.getEstado());
         }
 
-        // Validar que el porcentaje sea válido
-        if (porcentajeDescuento <= 0 || porcentajeDescuento > 100) {
+        // ✅ CORREGIDO: Validar porcentaje correctamente
+        if (porcentajeDescuento < 0 || porcentajeDescuento > 100) {
             throw new RuntimeException("El porcentaje de descuento debe estar entre 0 y 100");
         }
 
-        // Calcular el monto del descuento basado en el subtotal
-        Double montoDescuento = orden.getSubtotal() * (porcentajeDescuento / 100);
-        orden.setDescuento(montoDescuento);
-
-        // Recalcular totales
-        orden.calcularTotales();
+        // ✅ CORREGIDO: Usar el nuevo método de la entidad para aplicar descuento
+        try {
+            orden.aplicarDescuentoPorcentaje(porcentajeDescuento);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException(e.getMessage());
+        }
 
         Orden ordenActualizada = ordenRepository.save(orden);
-        log.info("Descuento aplicado exitosamente. Orden ID: {}, Monto descuento: {}", ordenId, montoDescuento);
+
+        // ✅ NUEVO: Log detallado con información completa
+        log.info("Descuento aplicado exitosamente. Orden ID: {}, Porcentaje: {}%, " +
+                        "Subtotal: {}, Descuento: {}, Impuestos: {}, Total: {}",
+                ordenId, porcentajeDescuento,
+                ordenActualizada.getSubtotal(),
+                ordenActualizada.getDescuento(),
+                ordenActualizada.getImpuestos(),
+                ordenActualizada.getTotal());
+
+        return ordenMapper.toDto(ordenActualizada);
+    }
+
+    @Override
+    @Transactional
+    public OrdenDto quitarDescuento(Long ordenId) {
+        log.info("Quitando descuento a orden ID: {}", ordenId);
+
+        Orden orden = ordenRepository.findByIdWithDetalles(ordenId)
+                .orElseThrow(() -> new RuntimeException("Orden no encontrada con ID: " + ordenId));
+
+        // ✅ CORREGIDO: Usar el nuevo método de validación de la entidad
+        if (!orden.puedeAplicarDescuento()) {
+            throw new RuntimeException("No se pueden quitar descuentos a órdenes en estado: " + orden.getEstado());
+        }
+
+        // ✅ CORREGIDO: Usar el nuevo método de la entidad para quitar descuento
+        orden.quitarDescuento();
+
+        Orden ordenActualizada = ordenRepository.save(orden);
+
+        // ✅ NUEVO: Log detallado
+        log.info("Descuento quitado exitosamente. Orden ID: {}, " +
+                        "Subtotal: {}, Descuento: {}, Impuestos: {}, Total: {}",
+                ordenId,
+                ordenActualizada.getSubtotal(),
+                ordenActualizada.getDescuento(),
+                ordenActualizada.getImpuestos(),
+                ordenActualizada.getTotal());
 
         return ordenMapper.toDto(ordenActualizada);
     }
@@ -260,19 +308,16 @@ public class OrdenServiceImpl implements OrdenService {
     }
 
     private String generarNumeroOrden() {
-        // Generar número de orden único con formato: ORD-YYYYMMDD-UUID
         String fecha = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String uuid = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         return "ORD-" + fecha + "-" + uuid;
     }
 
     private void validarTransicionEstado(EstadoOrden estadoActual, EstadoOrden nuevoEstado) {
-        // Validar transiciones de estado lógicas
         if (estadoActual == EstadoOrden.CERRADA) {
             throw new RuntimeException("No se puede modificar el estado de una orden CERRADA");
         }
 
-        // Validar flujo lógico: PENDIENTE -> PAGADA -> ENTREGADA -> CERRADA
         if (estadoActual == EstadoOrden.PENDIENTE &&
                 (nuevoEstado == EstadoOrden.ENTREGADA || nuevoEstado == EstadoOrden.CERRADA)) {
             throw new RuntimeException("No se puede saltar de PENDIENTE a " + nuevoEstado + ". Primero debe marcarse como PAGADA");
@@ -282,7 +327,6 @@ public class OrdenServiceImpl implements OrdenService {
             throw new RuntimeException("No se puede saltar de PAGADA a CERRADA. Primero debe marcarse como ENTREGADA");
         }
 
-        // No permitir retrocesos en el flujo
         if ((estadoActual == EstadoOrden.PAGADA && nuevoEstado == EstadoOrden.PENDIENTE) ||
                 (estadoActual == EstadoOrden.ENTREGADA &&
                         (nuevoEstado == EstadoOrden.PENDIENTE || nuevoEstado == EstadoOrden.PAGADA)) ||
@@ -292,16 +336,13 @@ public class OrdenServiceImpl implements OrdenService {
     }
 
     private OrdenConDetallesDto mapToOrdenConDetallesDto(Orden orden) {
-        // Mapear los detalles usando el DetalleOrdenMapper
         List<DetalleOrdenDto> detallesDto = orden.getProductos().stream()
                 .map(detalleOrdenMapper::toDto)
                 .collect(Collectors.toList());
 
-        // Mapear cliente y vendedor usando sus respectivos mappers
         ClienteDto clienteDto = clienteMapper.toDto(orden.getCliente());
-        UsuarioDto vendedorDto = usuarioMapper.toDtoSafe(orden.getVendedor()); // Usamos el método seguro
+        UsuarioDto vendedorDto = usuarioMapper.toDtoSafe(orden.getVendedor());
 
-        // Crear el DTO con los detalles mapeados correctamente
         return new OrdenConDetallesDto(
                 orden.getId(),
                 orden.getNumeroOrden(),
@@ -323,7 +364,6 @@ public class OrdenServiceImpl implements OrdenService {
     public List<OrdenDto> obtenerOrdenesPorVendedor(Long vendedorId) {
         log.info("Obteniendo órdenes para vendedor ID: {}", vendedorId);
 
-        // Validar que el vendedor existe
         if (!usuarioRepository.existsById(vendedorId)) {
             throw new RuntimeException("Vendedor no encontrado con ID: " + vendedorId);
         }
@@ -344,5 +384,55 @@ public class OrdenServiceImpl implements OrdenService {
     @Transactional
     public OrdenDto marcarComoDisponibleParaPago(Long id) {
         return actualizarEstadoOrden(id, EstadoOrden.DISPONIBLEPARAPAGO);
+    }
+
+    // ✅ NUEVO: Método para obtener información detallada del descuento
+    public String obtenerInformacionDescuento(Long ordenId) {
+        Orden orden = ordenRepository.findByIdWithDetalles(ordenId)
+                .orElseThrow(() -> new RuntimeException("Orden no encontrada con ID: " + ordenId));
+
+        return String.format(
+                "Orden #%s - Subtotal: $%,.2f - Descuento: $%,.2f (%.1f%%) - Impuestos: $%,.2f - Total: $%,.2f",
+                orden.getNumeroOrden(),
+                orden.getSubtotal(),
+                orden.getDescuento(),
+                orden.getPorcentajeDescuento(),
+                orden.getImpuestos(),
+                orden.getTotal()
+        );
+    }
+
+    @Override
+    @Transactional
+    public OrdenDto actualizarTotalOrden(Long ordenId, Double nuevoTotal) {
+        log.info("Actualizando total de orden ID: {} a {}", ordenId, nuevoTotal);
+
+        Orden orden = ordenRepository.findByIdWithDetalles(ordenId)
+                .orElseThrow(() -> new RuntimeException("Orden no encontrada con ID: " + ordenId));
+
+        // Validar que la orden esté en un estado que permita modificar el total
+        if (!orden.puedeSerModificada()) {
+            throw new RuntimeException("No se puede modificar el total de una orden en estado: " + orden.getEstado());
+        }
+
+        // Validar que el nuevo total sea válido
+        if (nuevoTotal == null || nuevoTotal < 0) {
+            throw new RuntimeException("El total debe ser un valor mayor o igual a 0");
+        }
+
+        // Actualizar el total y recalcular los otros campos si es necesario
+        // En este caso, mantenemos el subtotal y descuento existentes, solo actualizamos el total
+        // Esto podría variar según tu lógica de negocio
+        orden.setTotal(nuevoTotal);
+
+        // Si quieres mantener la coherencia, podrías recalcular el descuento basado en la diferencia
+        // o simplemente actualizar el total directamente según tus necesidades
+
+        Orden ordenActualizada = ordenRepository.save(orden);
+
+        log.info("Total de orden actualizado exitosamente. Orden ID: {}, Nuevo total: {}",
+                ordenId, nuevoTotal);
+
+        return ordenMapper.toDto(ordenActualizada);
     }
 }
