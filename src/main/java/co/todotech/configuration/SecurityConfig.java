@@ -2,7 +2,6 @@ package co.todotech.configuration;
 
 import co.todotech.security.JwtAuthenticationFilter;
 import co.todotech.security.JwtUtil;
-
 import co.todotech.security.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -41,11 +40,21 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/usuarios/login").permitAll()
-                        .requestMatchers("/usuarios/recordar-contrasena").permitAll()
-                        .requestMatchers("/usuarios/logout").authenticated() // ← Cambiado a authenticated
+                        // 🔓 ENDPOINTS PÚBLICOS (sin autenticación)
+                        .requestMatchers(
+                                "/usuarios/login",
+                                "/usuarios/recordar-contrasena",
+                                "/productos/publicos/**"  // ✅ TODOS los endpoints públicos de productos
+                        ).permitAll()
+
+                        // 🔐 ENDPOINTS QUE REQUIEREN AUTENTICACIÓN BÁSICA
+                        .requestMatchers("/usuarios/logout").authenticated()
+
+                        // 👑 ENDPOINTS ADMINISTRATIVOS (solo ADMIN)
                         .requestMatchers("/usuarios", "/usuarios/**").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                        // 🔒 TODAS LAS DEMÁS REQUESTS REQUIEREN AUTENTICACIÓN
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, tokenBlacklistService),

@@ -163,4 +163,42 @@ public class ProductoController {
         StockResponse response = new StockResponse(id, stock, producto.getNombre(), producto.getEstado().toString());
         return ResponseEntity.ok(new MensajeDto<>(false, "Stock consultado exitosamente", response));
     }
+
+    // ===== ENDPOINTS PÚBLICOS PARA CATÁLOGO =====
+
+    @GetMapping("/publicos/todos")
+    public ResponseEntity<MensajeDto<List<ProductoDto>>> obtenerTodosLosProductosPublicos() {
+        List<ProductoDto> lista = productoService.obtenerTodosLosProductos();
+        return ResponseEntity.ok(new MensajeDto<>(false, "Todos los productos obtenidos", lista));
+    }
+
+    @GetMapping("/publicos/activos")
+    public ResponseEntity<MensajeDto<List<ProductoDto>>> obtenerProductosActivosPublicos() {
+        List<ProductoDto> lista = productoService.obtenerProductosActivos();
+        return ResponseEntity.ok(new MensajeDto<>(false, "Productos activos obtenidos", lista));
+    }
+
+    @GetMapping("/publicos/disponibles")
+    public ResponseEntity<MensajeDto<List<ProductoDto>>> obtenerProductosDisponiblesPublicos() {
+        List<ProductoDto> lista = productoService.obtenerProductosDisponibles();
+        return ResponseEntity.ok(new MensajeDto<>(false, "Productos disponibles obtenidos", lista));
+    }
+
+    @GetMapping("/publicos/categoria/{categoriaId}")
+    public ResponseEntity<MensajeDto<List<ProductoDto>>> obtenerProductoPorCategoriaPublico(@PathVariable("categoriaId") Long categoriaId) {
+        List<ProductoDto> lista = productoService.obtenerProductoPorCategoriaId(categoriaId);
+        return ResponseEntity.ok(new MensajeDto<>(false, "Productos por categoría obtenidos", lista));
+    }
+
+    @GetMapping("/publicos/buscar")
+    public ResponseEntity<MensajeDto<List<ProductoDto>>> buscarProductosPorNombrePublico(@RequestParam("nombre") String nombre) {
+        List<ProductoDto> lista = productoService.buscarProductosPorNombre(nombre);
+        return ResponseEntity.ok(new MensajeDto<>(false, "Búsqueda completada", lista));
+    }
+
+    @GetMapping("/publicos/{id}")
+    public ResponseEntity<MensajeDto<ProductoDto>> obtenerProductoPorIdPublico(@PathVariable("id") Long id) {
+        ProductoDto dto = productoService.obtenerProductoPorId(id);
+        return ResponseEntity.ok(new MensajeDto<>(false, "Producto encontrado", dto));
+    }
 }

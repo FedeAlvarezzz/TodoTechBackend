@@ -30,8 +30,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String requestURI = request.getRequestURI();
 
-        // Permitir endpoints públicos sin validación de token
-        if (requestURI.equals("/usuarios/login") || requestURI.equals("/usuarios/recordar-contrasena")) {
+        // ✅ PERMITIR ENDPOINTS PÚBLICOS SIN VALIDACIÓN DE TOKEN
+        if (isPublicUrl(requestURI)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -85,9 +85,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    // ✅ NUEVO MÉTODO: VERIFICAR SI ES URL PÚBLICA
+    private boolean isPublicUrl(String requestURI) {
+        return requestURI.equals("/usuarios/login") ||
+                requestURI.equals("/usuarios/recordar-contrasena") ||
+                requestURI.startsWith("/productos/publicos/"); // ✅ AGREGAR ENDPOINTS PÚBLICOS DE PRODUCTOS
+    }
+
+    // ✅ ACTUALIZAR MÉTODO EXISTENTE
     private boolean requiresAuthentication(String requestURI) {
-        return !requestURI.equals("/usuarios/login") &&
-                !requestURI.equals("/usuarios/recordar-contrasena") &&
-                !requestURI.startsWith("/public/");
+        return !isPublicUrl(requestURI); // ✅ AHORA USA EL MISMO MÉTODO
     }
 }
