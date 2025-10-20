@@ -37,7 +37,7 @@ class CategoriaServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        // Configurar datos de prueba comunes
+        // Configuración inicial de objetos de prueba para todos los tests
         categoriaDto = new CategoriaDto();
         categoriaDto.setId(1L);
         categoriaDto.setNombre("Electrónicos");
@@ -51,16 +51,16 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería crear categoría exitosamente cuando datos son válidos")
     void testCrearCategoriaExitoso() throws Exception {
-        // Arrange
+        // Arrange: Configura mocks para validar nombre, mapeo y guardado
         when(categoriaRepository.existsByNombre(anyString())).thenReturn(false);
         when(categoriaMapper.toEntity(any(CategoriaDto.class))).thenReturn(categoria);
         when(categoriaRepository.save(any(Categoria.class))).thenReturn(categoria);
         when(categoriaMapper.toDto(any(Categoria.class))).thenReturn(categoriaDto);
 
-        // Act
+        // Act: Ejecuta el método a probar
         CategoriaDto resultado = categoriaService.crearCategoria(categoriaDto);
 
-        // Assert
+        // Assert: Verifica resultado y interacciones con los mocks
         assertNotNull(resultado);
         verify(categoriaRepository).existsByNombre("Electrónicos");
         verify(categoriaMapper).toEntity(categoriaDto);
@@ -71,10 +71,10 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando nombre está vacío")
     void testCrearCategoriaConNombreVacio() {
-        // Arrange
+        // Arrange: Configura nombre vacío
         categoriaDto.setNombre("   ");
 
-        // Act & Assert
+        // Act & Assert: Verifica que se lanza excepción con mensaje correcto
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.crearCategoria(categoriaDto);
         });
@@ -86,10 +86,10 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando nombre es nulo")
     void testCrearCategoriaConNombreNulo() {
-        // Arrange
+        // Arrange: Configura nombre nulo
         categoriaDto.setNombre(null);
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción por nombre nulo
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.crearCategoria(categoriaDto);
         });
@@ -101,10 +101,10 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando nombre ya existe")
     void testCrearCategoriaConNombreDuplicado() {
-        // Arrange
+        // Arrange: Simula que el nombre ya existe en BD
         when(categoriaRepository.existsByNombre(anyString())).thenReturn(true);
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción por duplicado
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.crearCategoria(categoriaDto);
         });
@@ -116,7 +116,7 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería actualizar categoría exitosamente")
     void testActualizarCategoriaExitoso() throws Exception {
-        // Arrange
+        // Arrange: Configura mocks para actualización exitosa
         CategoriaDto dtoActualizado = new CategoriaDto();
         dtoActualizado.setNombre("Electrónicos Actualizados");
 
@@ -125,10 +125,10 @@ class CategoriaServiceImplTest {
         when(categoriaRepository.save(any(Categoria.class))).thenReturn(categoria);
         when(categoriaMapper.toDto(any(Categoria.class))).thenReturn(dtoActualizado);
 
-        // Act
+        // Act: Ejecuta actualización
         CategoriaDto resultado = categoriaService.actualizarCategoria(1L, dtoActualizado);
 
-        // Assert
+        // Assert: Verifica resultado e interacciones
         assertNotNull(resultado);
         verify(categoriaRepository).findById(1L);
         verify(categoriaRepository).existsByNombreAndIdNot("Electrónicos Actualizados", 1L);
@@ -139,19 +139,18 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería actualizar categoría sin validar nombre cuando es el mismo")
     void testActualizarCategoriaConMismoNombre() throws Exception {
-        // Arrange
+        // Arrange: Configura mismo nombre (no requiere validación de duplicado)
         CategoriaDto dtoActualizado = new CategoriaDto();
-        dtoActualizado.setNombre("Electrónicos"); // Mismo nombre
+        dtoActualizado.setNombre("Electrónicos");
 
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
-        // No se llama a existsByNombreAndIdNot porque el nombre es el mismo
         when(categoriaRepository.save(any(Categoria.class))).thenReturn(categoria);
         when(categoriaMapper.toDto(any(Categoria.class))).thenReturn(dtoActualizado);
 
-        // Act
+        // Act: Ejecuta actualización
         CategoriaDto resultado = categoriaService.actualizarCategoria(1L, dtoActualizado);
 
-        // Assert
+        // Assert: Verifica que no se valida duplicado y se guarda
         assertNotNull(resultado);
         verify(categoriaRepository, never()).existsByNombreAndIdNot(anyString(), anyLong());
         verify(categoriaRepository).save(categoria);
@@ -160,10 +159,10 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción al actualizar categoría no encontrada")
     void testActualizarCategoriaNoEncontrada() {
-        // Arrange
+        // Arrange: Simula categoría no encontrada
         when(categoriaRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción por categoría no encontrada
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.actualizarCategoria(1L, categoriaDto);
         });
@@ -175,13 +174,13 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando nombre está vacío al actualizar")
     void testActualizarCategoriaConNombreVacio() {
-        // Arrange
+        // Arrange: Configura nombre vacío para actualización
         CategoriaDto dtoActualizado = new CategoriaDto();
         dtoActualizado.setNombre("   ");
 
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción por nombre vacío
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.actualizarCategoria(1L, dtoActualizado);
         });
@@ -193,14 +192,14 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando nombre duplicado al actualizar")
     void testActualizarCategoriaConNombreDuplicado() {
-        // Arrange
+        // Arrange: Simula nombre duplicado en otra categoría
         CategoriaDto dtoActualizado = new CategoriaDto();
         dtoActualizado.setNombre("Nuevo Nombre");
 
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
         when(categoriaRepository.existsByNombreAndIdNot(anyString(), anyLong())).thenReturn(true);
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción por nombre duplicado
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.actualizarCategoria(1L, dtoActualizado);
         });
@@ -212,15 +211,15 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería eliminar categoría exitosamente cuando no tiene productos")
     void testEliminarCategoriaExitoso() throws Exception {
-        // Arrange
+        // Arrange: Configura categoría sin productos asociados
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
         when(categoriaRepository.countProductosByCategoriaId(1L)).thenReturn(0L);
         doNothing().when(categoriaRepository).delete(categoria);
 
-        // Act
+        // Act: Ejecuta eliminación
         categoriaService.eliminarCategoria(1L);
 
-        // Assert
+        // Assert: Verifica interacciones correctas
         verify(categoriaRepository).findById(1L);
         verify(categoriaRepository).countProductosByCategoriaId(1L);
         verify(categoriaRepository).delete(categoria);
@@ -229,10 +228,10 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción al eliminar categoría no encontrada")
     void testEliminarCategoriaNoEncontrada() {
-        // Arrange
+        // Arrange: Simula categoría no existente
         when(categoriaRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción por categoría no encontrada
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.eliminarCategoria(1L);
         });
@@ -244,11 +243,11 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción al eliminar categoría con productos asociados")
     void testEliminarCategoriaConProductos() {
-        // Arrange
+        // Arrange: Configura categoría con productos asociados
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
         when(categoriaRepository.countProductosByCategoriaId(1L)).thenReturn(5L);
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción por productos asociados
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.eliminarCategoria(1L);
         });
@@ -260,14 +259,14 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería obtener categoría por ID exitosamente")
     void testObtenerCategoriaPorId() throws Exception {
-        // Arrange
+        // Arrange: Configura mocks para búsqueda por ID
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
         when(categoriaMapper.toDto(any(Categoria.class))).thenReturn(categoriaDto);
 
-        // Act
+        // Act: Ejecuta búsqueda por ID
         CategoriaDto resultado = categoriaService.obtenerCategoriaPorId(1L);
 
-        // Assert
+        // Assert: Verifica resultado correcto
         assertNotNull(resultado);
         assertEquals("Electrónicos", resultado.getNombre());
         verify(categoriaRepository).findById(1L);
@@ -277,10 +276,10 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando categoría no existe por ID")
     void testObtenerCategoriaPorIdNoEncontrada() {
-        // Arrange
+        // Arrange: Simula categoría no encontrada por ID
         when(categoriaRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción por ID no encontrado
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.obtenerCategoriaPorId(1L);
         });
@@ -292,14 +291,14 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería obtener categoría por nombre exitosamente")
     void testObtenerCategoriaPorNombre() throws Exception {
-        // Arrange
+        // Arrange: Configura mocks para búsqueda por nombre
         when(categoriaRepository.findByNombreIgnoreCase("Electrónicos")).thenReturn(Optional.of(categoria));
         when(categoriaMapper.toDto(any(Categoria.class))).thenReturn(categoriaDto);
 
-        // Act
+        // Act: Ejecuta búsqueda por nombre
         CategoriaDto resultado = categoriaService.obtenerCategoriaPorNombre("Electrónicos");
 
-        // Assert
+        // Assert: Verifica resultado correcto
         assertNotNull(resultado);
         assertEquals("Electrónicos", resultado.getNombre());
         verify(categoriaRepository).findByNombreIgnoreCase("Electrónicos");
@@ -308,7 +307,7 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando nombre de búsqueda está vacío")
     void testObtenerCategoriaPorNombreVacio() {
-        // Act & Assert
+        // Act & Assert: Verifica excepción por nombre de búsqueda vacío
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.obtenerCategoriaPorNombre("   ");
         });
@@ -320,10 +319,10 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando categoría no existe por nombre")
     void testObtenerCategoriaPorNombreNoEncontrada() {
-        // Arrange
+        // Arrange: Simula categoría no encontrada por nombre
         when(categoriaRepository.findByNombreIgnoreCase("Inexistente")).thenReturn(Optional.empty());
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción por nombre no encontrado
         Exception exception = assertThrows(Exception.class, () -> {
             categoriaService.obtenerCategoriaPorNombre("Inexistente");
         });
@@ -335,15 +334,15 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería obtener todas las categorías")
     void testObtenerTodasLasCategorias() {
-        // Arrange
+        // Arrange: Configura lista de categorías mock
         List<Categoria> categorias = Arrays.asList(categoria);
         when(categoriaRepository.findAll()).thenReturn(categorias);
         when(categoriaMapper.toDto(any(Categoria.class))).thenReturn(categoriaDto);
 
-        // Act
+        // Act: Ejecuta obtención de todas las categorías
         List<CategoriaDto> resultados = categoriaService.obtenerTodasLasCategorias();
 
-        // Assert
+        // Assert: Verifica lista no vacía
         assertEquals(1, resultados.size());
         verify(categoriaRepository).findAll();
         verify(categoriaMapper).toDto(categoria);
@@ -352,7 +351,7 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería obtener categorías con productos")
     void testObtenerCategoriasConProductos() {
-        // Arrange
+        // Arrange: Configura categorías con y sin productos
         Categoria categoriaConProductos = Categoria.builder()
                 .id(2L)
                 .nombre("Ropa")
@@ -370,10 +369,10 @@ class CategoriaServiceImplTest {
         when(categoriaRepository.countProductosByCategoriaId(3L)).thenReturn(0L);
         when(categoriaMapper.toDto(categoriaConProductos)).thenReturn(new CategoriaDto(2L, "Ropa"));
 
-        // Act
+        // Act: Ejecuta obtención de categorías con productos
         List<CategoriaDto> resultados = categoriaService.obtenerCategoriasConProductos();
 
-        // Assert
+        // Assert: Verifica que solo retorna categorías con productos
         assertEquals(1, resultados.size());
         assertEquals("Ropa", resultados.get(0).getNombre());
         verify(categoriaRepository).findAll();
@@ -384,7 +383,7 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería retornar lista vacía cuando no hay categorías con productos")
     void testObtenerCategoriasConProductosListaVacia() {
-        // Arrange
+        // Arrange: Configura categoría sin productos
         Categoria categoriaSinProductos = Categoria.builder()
                 .id(1L)
                 .nombre("Sin Productos")
@@ -394,10 +393,10 @@ class CategoriaServiceImplTest {
         when(categoriaRepository.findAll()).thenReturn(categorias);
         when(categoriaRepository.countProductosByCategoriaId(1L)).thenReturn(0L);
 
-        // Act
+        // Act: Ejecuta obtención de categorías con productos
         List<CategoriaDto> resultados = categoriaService.obtenerCategoriasConProductos();
 
-        // Assert
+        // Assert: Verifica lista vacía
         assertTrue(resultados.isEmpty());
         verify(categoriaRepository).findAll();
         verify(categoriaRepository).countProductosByCategoriaId(1L);
@@ -406,7 +405,7 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería manejar correctamente cuando countProductosByCategoriaId retorna null")
     void testObtenerCategoriasConProductosCountNull() {
-        // Arrange
+        // Arrange: Configura count nulo
         Categoria categoriaConCountNull = Categoria.builder()
                 .id(1L)
                 .nombre("Categoria Count Null")
@@ -416,10 +415,10 @@ class CategoriaServiceImplTest {
         when(categoriaRepository.findAll()).thenReturn(categorias);
         when(categoriaRepository.countProductosByCategoriaId(1L)).thenReturn(null);
 
-        // Act
+        // Act: Ejecuta obtención de categorías con productos
         List<CategoriaDto> resultados = categoriaService.obtenerCategoriasConProductos();
 
-        // Assert
+        // Assert: Verifica que count nulo se trata como cero productos
         assertTrue(resultados.isEmpty());
         verify(categoriaRepository).findAll();
         verify(categoriaRepository).countProductosByCategoriaId(1L);
@@ -428,19 +427,18 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería actualizar categoría cuando nombre es nulo (solo otros campos)")
     void testActualizarCategoriaConNombreNulo() throws Exception {
-        // Arrange
+        // Arrange: Configura actualización con nombre nulo
         CategoriaDto dtoActualizado = new CategoriaDto();
-        dtoActualizado.setNombre(null); // Nombre nulo, no se valida unicidad
+        dtoActualizado.setNombre(null);
 
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
-        // No se llama a existsByNombreAndIdNot porque el nombre es nulo
         when(categoriaRepository.save(any(Categoria.class))).thenReturn(categoria);
         when(categoriaMapper.toDto(any(Categoria.class))).thenReturn(dtoActualizado);
 
-        // Act
+        // Act: Ejecuta actualización
         CategoriaDto resultado = categoriaService.actualizarCategoria(1L, dtoActualizado);
 
-        // Assert
+        // Assert: Verifica que no valida duplicado cuando nombre es nulo
         assertNotNull(resultado);
         verify(categoriaRepository, never()).existsByNombreAndIdNot(anyString(), anyLong());
         verify(categoriaRepository).save(categoria);
@@ -449,7 +447,7 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería crear categoría con nombre con espacios que se recortan")
     void testCrearCategoriaConEspaciosEnNombre() throws Exception {
-        // Arrange
+        // Arrange: Configura nombre con espacios extras
         CategoriaDto dtoConEspacios = new CategoriaDto();
         dtoConEspacios.setNombre("  Electrónicos  ");
 
@@ -458,12 +456,11 @@ class CategoriaServiceImplTest {
         when(categoriaRepository.save(any(Categoria.class))).thenReturn(categoria);
         when(categoriaMapper.toDto(any(Categoria.class))).thenReturn(categoriaDto);
 
-        // Act
+        // Act: Ejecuta creación
         CategoriaDto resultado = categoriaService.crearCategoria(dtoConEspacios);
 
-        // Assert
+        // Assert: Verifica que se recortan espacios en validación
         assertNotNull(resultado);
-        // Verifica que se llamó con el nombre recortado
         verify(categoriaRepository).existsByNombre("Electrónicos");
         verify(categoriaRepository).save(categoria);
     }
@@ -471,7 +468,7 @@ class CategoriaServiceImplTest {
     @Test
     @DisplayName("Debería actualizar categoría con nombre con espacios que se recortan")
     void testActualizarCategoriaConEspaciosEnNombre() throws Exception {
-        // Arrange
+        // Arrange: Configura nombre con espacios para actualización
         CategoriaDto dtoConEspacios = new CategoriaDto();
         dtoConEspacios.setNombre("  Nuevo Nombre  ");
 
@@ -480,12 +477,11 @@ class CategoriaServiceImplTest {
         when(categoriaRepository.save(any(Categoria.class))).thenReturn(categoria);
         when(categoriaMapper.toDto(any(Categoria.class))).thenReturn(dtoConEspacios);
 
-        // Act
+        // Act: Ejecuta actualización
         CategoriaDto resultado = categoriaService.actualizarCategoria(1L, dtoConEspacios);
 
-        // Assert
+        // Assert: Verifica que se recortan espacios en validación de duplicado
         assertNotNull(resultado);
-        // Verifica que se llamó con el nombre recortado
         verify(categoriaRepository).existsByNombreAndIdNot("Nuevo Nombre", 1L);
         verify(categoriaRepository).save(categoria);
     }

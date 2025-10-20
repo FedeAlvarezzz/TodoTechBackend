@@ -94,20 +94,19 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería crear detalle de orden exitosamente cuando datos son válidos")
     void testCrearDetalleOrdenExitoso() {
-        // Arrange
+        // Arrange: Configura mocks para creación exitosa
         when(ordenRepository.findById(1L)).thenReturn(Optional.of(orden));
         when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
         when(detalleOrdenRepository.findByOrdenIdAndProductoId(1L, 1L)).thenReturn(Optional.empty());
         when(detalleOrdenRepository.save(any(DetalleOrden.class))).thenReturn(detalleOrden);
         when(detalleOrdenMapper.toDto(any(DetalleOrden.class))).thenReturn(detalleOrdenDto);
 
-        // Act
+        // Act: Ejecuta creación de detalle
         DetalleOrdenDto resultado = detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
 
-        // Assert
+        // Assert: Verifica creación exitosa
         assertNotNull(resultado);
         verify(ordenRepository).findById(1L);
-        // Se llama 2 veces: una en crearDetalleOrden y otra en validarStockDisponible
         verify(productoRepository, times(2)).findById(1L);
         verify(detalleOrdenRepository).findByOrdenIdAndProductoId(1L, 1L);
         verify(detalleOrdenRepository).save(any(DetalleOrden.class));
@@ -117,7 +116,7 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería crear detalle de orden cuando orden está en estado AGREGANDOPRODUCTOS")
     void testCrearDetalleOrdenConEstadoAgregandoProductos() {
-        // Arrange
+        // Arrange: Configura orden en estado AGREGANDOPRODUCTOS
         orden.setEstado(EstadoOrden.AGREGANDOPRODUCTOS);
 
         when(ordenRepository.findById(1L)).thenReturn(Optional.of(orden));
@@ -126,13 +125,12 @@ class DetalleOrdenServiceImplTest {
         when(detalleOrdenRepository.save(any(DetalleOrden.class))).thenReturn(detalleOrden);
         when(detalleOrdenMapper.toDto(any(DetalleOrden.class))).thenReturn(detalleOrdenDto);
 
-        // Act
+        // Act: Ejecuta creación con estado válido
         DetalleOrdenDto resultado = detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
 
-        // Assert
+        // Assert: Verifica creación con estado alternativo
         assertNotNull(resultado);
         verify(ordenRepository).findById(1L);
-        // Se llama 2 veces: una en crearDetalleOrden y otra en validarStockDisponible
         verify(productoRepository, times(2)).findById(1L);
         verify(detalleOrdenRepository).save(any(DetalleOrden.class));
     }
@@ -140,10 +138,10 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando orden no existe")
     void testCrearDetalleOrdenConOrdenNoEncontrada() {
-        // Arrange
+        // Arrange: Simula orden no encontrada
         when(ordenRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de orden no encontrada
         OrdenNotFoundException exception = assertThrows(OrdenNotFoundException.class, () -> {
             detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
         });
@@ -155,11 +153,11 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando orden está en estado DISPONIBLEPARAPAGO")
     void testCrearDetalleOrdenConEstadoDisponibleParaPago() {
-        // Arrange
+        // Arrange: Configura orden en estado no permitido
         orden.setEstado(EstadoOrden.DISPONIBLEPARAPAGO);
         when(ordenRepository.findById(1L)).thenReturn(Optional.of(orden));
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de estado inválido
         DetalleOrdenEstadoException exception = assertThrows(DetalleOrdenEstadoException.class, () -> {
             detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
         });
@@ -171,11 +169,11 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando orden está en estado PAGADA")
     void testCrearDetalleOrdenConEstadoPagada() {
-        // Arrange
+        // Arrange: Configura orden en estado PAGADA
         orden.setEstado(EstadoOrden.PAGADA);
         when(ordenRepository.findById(1L)).thenReturn(Optional.of(orden));
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de estado PAGADA
         DetalleOrdenEstadoException exception = assertThrows(DetalleOrdenEstadoException.class, () -> {
             detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
         });
@@ -187,11 +185,11 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando orden está en estado ENTREGADA")
     void testCrearDetalleOrdenConEstadoEntregada() {
-        // Arrange
+        // Arrange: Configura orden en estado ENTREGADA
         orden.setEstado(EstadoOrden.ENTREGADA);
         when(ordenRepository.findById(1L)).thenReturn(Optional.of(orden));
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de estado ENTREGADA
         DetalleOrdenEstadoException exception = assertThrows(DetalleOrdenEstadoException.class, () -> {
             detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
         });
@@ -203,11 +201,11 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando orden está en estado CERRADA")
     void testCrearDetalleOrdenConEstadoCerrada() {
-        // Arrange
+        // Arrange: Configura orden en estado CERRADA
         orden.setEstado(EstadoOrden.CERRADA);
         when(ordenRepository.findById(1L)).thenReturn(Optional.of(orden));
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de estado CERRADA
         DetalleOrdenEstadoException exception = assertThrows(DetalleOrdenEstadoException.class, () -> {
             detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
         });
@@ -219,11 +217,11 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando producto no existe")
     void testCrearDetalleOrdenConProductoNoEncontrado() {
-        // Arrange
+        // Arrange: Simula producto no encontrado
         when(ordenRepository.findById(1L)).thenReturn(Optional.of(orden));
         when(productoRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de producto no encontrado
         ProductoNotFoundException exception = assertThrows(ProductoNotFoundException.class, () -> {
             detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
         });
@@ -235,12 +233,12 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando stock es insuficiente")
     void testCrearDetalleOrdenConStockInsuficiente() {
-        // Arrange
+        // Arrange: Configura stock insuficiente
         producto.setStock(1); // Stock insuficiente para cantidad 2
         when(ordenRepository.findById(1L)).thenReturn(Optional.of(orden));
         when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de stock insuficiente
         DetalleOrdenBusinessException exception = assertThrows(DetalleOrdenBusinessException.class, () -> {
             detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
         });
@@ -252,12 +250,12 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando producto está inactivo")
     void testCrearDetalleOrdenConProductoInactivo() {
-        // Arrange
+        // Arrange: Configura producto inactivo
         producto.setEstado(EstadoProducto.INACTIVO);
         when(ordenRepository.findById(1L)).thenReturn(Optional.of(orden));
         when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de producto inactivo
         DetalleOrdenBusinessException exception = assertThrows(DetalleOrdenBusinessException.class, () -> {
             detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
         });
@@ -269,12 +267,12 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando ya existe detalle para el mismo producto")
     void testCrearDetalleOrdenConDetalleDuplicado() {
-        // Arrange
+        // Arrange: Simula detalle duplicado
         when(ordenRepository.findById(1L)).thenReturn(Optional.of(orden));
         when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
         when(detalleOrdenRepository.findByOrdenIdAndProductoId(1L, 1L)).thenReturn(Optional.of(detalleOrden));
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de detalle duplicado
         DetalleOrdenDuplicateException exception = assertThrows(DetalleOrdenDuplicateException.class, () -> {
             detalleOrdenService.crearDetalleOrden(createDetalleOrdenDto, 1L);
         });
@@ -286,18 +284,19 @@ class DetalleOrdenServiceImplTest {
     @Test
     @DisplayName("Debería obtener detalle de orden por ID exitosamente")
     void testObtenerDetalleOrden() {
-        // Arrange
+        // Arrange: Configura detalle existente
         when(detalleOrdenRepository.findById(1L)).thenReturn(Optional.of(detalleOrden));
         when(detalleOrdenMapper.toDto(any(DetalleOrden.class))).thenReturn(detalleOrdenDto);
 
-        // Act
+        // Act: Ejecuta obtención por ID
         DetalleOrdenDto resultado = detalleOrdenService.obtenerDetalleOrden(1L);
 
-        // Assert
+        // Assert: Verifica obtención exitosa
         assertNotNull(resultado);
         verify(detalleOrdenRepository).findById(1L);
         verify(detalleOrdenMapper).toDto(detalleOrden);
     }
+
 
     @Test
     @DisplayName("Debería lanzar excepción cuando detalle no existe por ID")

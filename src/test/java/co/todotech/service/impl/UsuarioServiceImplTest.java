@@ -97,24 +97,36 @@ class UsuarioServiceImplTest {
                 .build();
     }
 
+    // Pruebas unitarias para el servicio de usuarios (UsuarioService)
+// Se usa JUnit 5 y Mockito para simular el comportamiento de dependencias externas
+// como el repositorio, el codificador de contraseñas y el servicio de notificaciones.
+
     @Test
     @DisplayName("Debería hacer login exitosamente con credenciales válidas")
     void testLoginExitoso() {
-        // Arrange
+        // Arrange (preparación)
+        // Se definen credenciales válidas
         String nombreUsuario = "juanperez";
         String contrasena = "password123";
 
+        // Se simula que el repositorio encuentra un usuario con ese nombre
         when(usuarioRepository.findByNombreUsuario(nombreUsuario))
                 .thenReturn(Optional.of(usuario));
+
+        // Se simula que la contraseña ingresada coincide con la almacenada (verificación exitosa)
         when(passwordEncoder.matches(contrasena, usuario.getContrasena()))
                 .thenReturn(true);
+
+        // Se simula la generación de un token JWT válido
         when(jwtUtil.generateToken(anyString(), anyLong(), anyString()))
                 .thenReturn("jwt-token");
 
-        // Act
+        // Act (ejecución)
+        // Se llama al método de login del servicio
         LoginResponse response = usuarioService.login(nombreUsuario, contrasena);
 
-        // Assert
+        // Assert (verificación)
+        // Se validan los valores esperados en la respuesta
         assertNotNull(response);
         assertEquals("jwt-token", response.getToken());
         assertEquals("Bearer", response.getTokenType());
@@ -124,6 +136,7 @@ class UsuarioServiceImplTest {
         assertEquals(TipoUsuario.VENDEDOR, response.getRole());
         assertEquals("Login exitoso", response.getMensaje());
 
+        // Se verifica que se llamaron los métodos necesarios
         verify(usuarioRepository).findByNombreUsuario(nombreUsuario);
         verify(passwordEncoder).matches(contrasena, usuario.getContrasena());
         verify(jwtUtil).generateToken("juanperez", 1L, "VENDEDOR");
@@ -136,13 +149,21 @@ class UsuarioServiceImplTest {
         String nombreUsuario = "admin";
         String contrasena = "admin123";
 
+        // Se simula la existencia del usuario administrador
         when(usuarioRepository.findByNombreUsuario(nombreUsuario))
                 .thenReturn(Optional.of(usuarioAdmin));
+
+        // Se simula coincidencia de contraseña
         when(passwordEncoder.matches(contrasena, usuarioAdmin.getContrasena()))
                 .thenReturn(true);
+
+        // Se genera un token ficticio para el admin
         when(jwtUtil.generateToken(anyString(), anyLong(), anyString()))
                 .thenReturn("jwt-token-admin");
-        doNothing().when(emailService).sendAdminLoginNotification(anyString(), anyString(), anyString());
+
+        // Se simula el envío exitoso de la notificación de ingreso al admin
+        doNothing().when(emailService)
+                .sendAdminLoginNotification(anyString(), anyString(), anyString());
 
         // Act
         LoginResponse response = usuarioService.login(nombreUsuario, contrasena);
@@ -150,6 +171,8 @@ class UsuarioServiceImplTest {
         // Assert
         assertNotNull(response);
         assertEquals("jwt-token-admin", response.getToken());
+
+        // Se verifica que el servicio de correo fue llamado con los parámetros correctos
         verify(emailService).sendAdminLoginNotification(
                 eq("admin@example.com"),
                 eq("Admin User"),
@@ -164,20 +187,31 @@ class UsuarioServiceImplTest {
         String nombreUsuario = "admin";
         String contrasena = "admin123";
 
+        // Se simula que el usuario admin existe
         when(usuarioRepository.findByNombreUsuario(nombreUsuario))
                 .thenReturn(Optional.of(usuarioAdmin));
+
+        // Contraseña correcta
         when(passwordEncoder.matches(contrasena, usuarioAdmin.getContrasena()))
                 .thenReturn(true);
+
+        // Se genera token con éxito
         when(jwtUtil.generateToken(anyString(), anyLong(), anyString()))
                 .thenReturn("jwt-token-admin");
-        doThrow(new Exception("Error de email")).when(emailService).sendAdminLoginNotification(anyString(), anyString(), anyString());
+
+        // Se fuerza un error al intentar enviar el correo (para probar manejo de excepciones)
+        doThrow(new Exception("Error de email")).when(emailService)
+                .sendAdminLoginNotification(anyString(), anyString(), anyString());
 
         // Act
         LoginResponse response = usuarioService.login(nombreUsuario, contrasena);
 
-        // Assert - El login debe ser exitoso a pesar del error de email
+        // Assert
+        // A pesar del error en el envío de correo, el login debe completarse correctamente
         assertNotNull(response);
         assertEquals("jwt-token-admin", response.getToken());
+
+        // Se verifica que sí se intentó enviar la notificación
         verify(emailService).sendAdminLoginNotification(anyString(), anyString(), anyString());
     }
 
@@ -188,15 +222,20 @@ class UsuarioServiceImplTest {
         String nombreUsuario = "usuarioinexistente";
         String contrasena = "password123";
 
+        // Se simula que no se encuentra ningún usuario con ese nombre
         when(usuarioRepository.findByNombreUsuario(nombreUsuario))
                 .thenReturn(Optional.empty());
 
         // Act & Assert
+        // Se espera que el servicio lance una excepción específica
         UsuarioNotFoundException exception = assertThrows(UsuarioNotFoundException.class, () -> {
             usuarioService.login(nombreUsuario, contrasena);
         });
 
+        // Se verifica el mensaje de la excepción
         assertEquals("Usuario no encontrado", exception.getMessage());
+
+        // Se confirma que no se intentó verificar contraseñas, ya que el usuario no existe
         verify(usuarioRepository).findByNombreUsuario(nombreUsuario);
         verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
@@ -208,17 +247,24 @@ class UsuarioServiceImplTest {
         String nombreUsuario = "juanperez";
         String contrasena = "contrasenaIncorrecta";
 
+        // Se simula que el usuario existe
         when(usuarioRepository.findByNombreUsuario(nombreUsuario))
                 .thenReturn(Optional.of(usuario));
+
+        // Se simula que la contraseña no coincide
         when(passwordEncoder.matches(contrasena, usuario.getContrasena()))
                 .thenReturn(false);
 
         // Act & Assert
+        // Se espera una excepción de autenticación
         AuthenticationException exception = assertThrows(AuthenticationException.class, () -> {
             usuarioService.login(nombreUsuario, contrasena);
         });
 
+        // Se valida el mensaje
         assertEquals("Contraseña incorrecta", exception.getMessage());
+
+        // Se verifican las llamadas realizadas
         verify(usuarioRepository).findByNombreUsuario(nombreUsuario);
         verify(passwordEncoder).matches(contrasena, usuario.getContrasena());
     }
@@ -229,14 +275,18 @@ class UsuarioServiceImplTest {
         // Arrange
         String nombreUsuario = "juanperez";
         String contrasena = "password123";
+
+        // Se marca el usuario como inactivo
         usuario.setEstado(false);
 
+        // El usuario existe y la contraseña es correcta
         when(usuarioRepository.findByNombreUsuario(nombreUsuario))
                 .thenReturn(Optional.of(usuario));
         when(passwordEncoder.matches(contrasena, usuario.getContrasena()))
                 .thenReturn(true);
 
         // Act & Assert
+        // Se espera una excepción de estado inactivo
         UsuarioEstadoException exception = assertThrows(UsuarioEstadoException.class, () -> {
             usuarioService.login(nombreUsuario, contrasena);
         });
@@ -248,17 +298,25 @@ class UsuarioServiceImplTest {
     @DisplayName("Debería crear usuario exitosamente cuando datos son válidos")
     void testCrearUsuarioExitoso() {
         // Arrange
+        // Se simula que no existen conflictos de datos (cedula, correo, usuario)
         when(usuarioRepository.existsByCedula(anyString())).thenReturn(false);
         when(usuarioRepository.existsByCorreo(anyString())).thenReturn(false);
         when(usuarioRepository.existsByNombreUsuario(anyString())).thenReturn(false);
+
+        // Se mapea correctamente el DTO a la entidad
         when(usuarioMapper.toEntity(any(UsuarioDto.class))).thenReturn(usuario);
+
+        // Se simula el proceso de encriptación de la contraseña
         when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
+
+        // Se simula el guardado exitoso del usuario
         when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
         // Act
         usuarioService.crearUsuario(usuarioDto);
 
         // Assert
+        // Se verifican todas las validaciones y operaciones esperadas
         verify(usuarioRepository).existsByCedula("123456789");
         verify(usuarioRepository).existsByCorreo("juan@example.com");
         verify(usuarioRepository).existsByNombreUsuario("juanperez");
@@ -266,6 +324,7 @@ class UsuarioServiceImplTest {
         verify(passwordEncoder).encode("password123");
         verify(usuarioRepository).save(usuario);
     }
+
 
     @Test
     @DisplayName("Debería lanzar excepción cuando cédula ya existe al crear usuario")

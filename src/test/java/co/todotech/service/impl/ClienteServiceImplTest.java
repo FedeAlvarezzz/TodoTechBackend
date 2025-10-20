@@ -67,17 +67,17 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería crear cliente exitosamente cuando datos son válidos")
     void testCrearClienteExitoso() throws Exception {
-        // Arrange
+        // Arrange: Configura mocks para creación exitosa
         when(clienteRepository.existsByCedula(anyString())).thenReturn(false);
         when(clienteRepository.existsByCorreo(anyString())).thenReturn(false);
         when(clienteMapper.toEntity(any(ClienteDto.class))).thenReturn(cliente);
         when(clienteRepository.save(any(Cliente.class))).thenReturn(cliente);
         when(clienteMapper.toDto(any(Cliente.class))).thenReturn(clienteDto);
 
-        // Act
+        // Act: Ejecuta el método a probar
         ClienteDto resultado = clienteService.crearCliente(clienteDto);
 
-        // Assert
+        // Assert: Verifica resultado y interacciones
         assertNotNull(resultado);
         verify(clienteRepository).existsByCedula("123456789");
         verify(clienteRepository).existsByCorreo("juan@example.com");
@@ -89,10 +89,10 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando cédula ya existe")
     void testCrearClienteConCedulaDuplicada() {
-        // Arrange
+        // Arrange: Simula cédula existente
         when(clienteRepository.existsByCedula(anyString())).thenReturn(true);
 
-        // Act & Assert
+        // Act & Assert: Verifica que lanza excepción
         Exception exception = assertThrows(Exception.class, () -> {
             clienteService.crearCliente(clienteDto);
         });
@@ -104,11 +104,11 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando correo ya existe")
     void testCrearClienteConCorreoDuplicado() {
-        // Arrange
+        // Arrange: Simula correo existente
         when(clienteRepository.existsByCedula(anyString())).thenReturn(false);
         when(clienteRepository.existsByCorreo(anyString())).thenReturn(true);
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de correo duplicado
         Exception exception = assertThrows(Exception.class, () -> {
             clienteService.crearCliente(clienteDto);
         });
@@ -120,7 +120,7 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería crear cliente exitosamente cuando correo es nulo")
     void testCrearClienteConCorreoNulo() throws Exception {
-        // Arrange
+        // Arrange: Prepara DTO sin correo
         ClienteDto dtoSinCorreo = new ClienteDto(
                 "Juan Pérez", "123456789", null, "+573001234567",
                 "Calle 123 #45-67", TipoCliente.NATURAL, 10.0
@@ -131,10 +131,10 @@ class ClienteServiceImplTest {
         when(clienteRepository.save(any(Cliente.class))).thenReturn(cliente);
         when(clienteMapper.toDto(any(Cliente.class))).thenReturn(dtoSinCorreo);
 
-        // Act
+        // Act: Ejecuta con correo nulo
         ClienteDto resultado = clienteService.crearCliente(dtoSinCorreo);
 
-        // Assert
+        // Assert: Verifica que no valida correo nulo
         assertNotNull(resultado);
         verify(clienteRepository).existsByCedula("123456789");
         verify(clienteRepository, never()).existsByCorreo(anyString());
@@ -144,7 +144,7 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería crear cliente exitosamente cuando correo está en blanco")
     void testCrearClienteConCorreoEnBlanco() throws Exception {
-        // Arrange
+        // Arrange: Prepara DTO con correo en blanco
         ClienteDto dtoCorreoBlanco = new ClienteDto(
                 "Juan Pérez", "123456789", "   ", "+573001234567",
                 "Calle 123 #45-67", TipoCliente.NATURAL, 10.0
@@ -155,10 +155,10 @@ class ClienteServiceImplTest {
         when(clienteRepository.save(any(Cliente.class))).thenReturn(cliente);
         when(clienteMapper.toDto(any(Cliente.class))).thenReturn(dtoCorreoBlanco);
 
-        // Act
+        // Act: Ejecuta con correo vacío
         ClienteDto resultado = clienteService.crearCliente(dtoCorreoBlanco);
 
-        // Assert
+        // Assert: Verifica que ignora correo vacío
         assertNotNull(resultado);
         verify(clienteRepository).existsByCedula("123456789");
         verify(clienteRepository, never()).existsByCorreo(anyString());
@@ -168,7 +168,7 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería actualizar cliente exitosamente")
     void testActualizarClienteExitoso() throws Exception {
-        // Arrange
+        // Arrange: Prepara datos actualizados
         ClienteDto dtoActualizado = new ClienteDto(
                 "Juan Pérez Actualizado", "123456789", "juan.actualizado@example.com",
                 "+573001234568", "Calle Actualizada 123", TipoCliente.JURIDICO, 15.0
@@ -179,10 +179,10 @@ class ClienteServiceImplTest {
         when(clienteRepository.save(any(Cliente.class))).thenReturn(cliente);
         when(clienteMapper.toDto(any(Cliente.class))).thenReturn(dtoActualizado);
 
-        // Act
+        // Act: Ejecuta actualización
         ClienteDto resultado = clienteService.actualizarCliente(1L, dtoActualizado);
 
-        // Assert
+        // Assert: Verifica actualización exitosa
         assertNotNull(resultado);
         verify(clienteRepository).findById(1L);
         verify(clienteRepository).existsByCorreoAndIdNot("juan.actualizado@example.com", 1L);
@@ -193,10 +193,10 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción al actualizar cliente no encontrado")
     void testActualizarClienteNoEncontrado() {
-        // Arrange
+        // Arrange: Simula cliente no existente
         when(clienteRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de no encontrado
         Exception exception = assertThrows(Exception.class, () -> {
             clienteService.actualizarCliente(1L, clienteDto);
         });
@@ -208,7 +208,7 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción al actualizar con cédula duplicada")
     void testActualizarClienteConCedulaDuplicada() {
-        // Arrange
+        // Arrange: Prepara DTO con cédula existente
         ClienteDto dtoActualizado = new ClienteDto(
                 "Juan Pérez", "987654321", "juan@example.com",
                 "+573001234567", "Calle 123 #45-67", TipoCliente.NATURAL, 10.0
@@ -217,7 +217,7 @@ class ClienteServiceImplTest {
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
         when(clienteRepository.existsByCedulaAndIdNot(anyString(), anyLong())).thenReturn(true);
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de cédula duplicada
         Exception exception = assertThrows(Exception.class, () -> {
             clienteService.actualizarCliente(1L, dtoActualizado);
         });
@@ -229,7 +229,7 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción al actualizar con correo duplicado")
     void testActualizarClienteConCorreoDuplicado() {
-        // Arrange
+        // Arrange: Prepara DTO con correo existente
         ClienteDto dtoActualizado = new ClienteDto(
                 "Juan Pérez", "123456789", "nuevo.correo@example.com",
                 "+573001234567", "Calle 123 #45-67", TipoCliente.NATURAL, 10.0
@@ -238,7 +238,7 @@ class ClienteServiceImplTest {
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
         when(clienteRepository.existsByCorreoAndIdNot(anyString(), anyLong())).thenReturn(true);
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción de correo duplicado
         Exception exception = assertThrows(Exception.class, () -> {
             clienteService.actualizarCliente(1L, dtoActualizado);
         });
@@ -250,14 +250,14 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería eliminar cliente exitosamente")
     void testEliminarCliente() throws Exception {
-        // Arrange
+        // Arrange: Configura cliente existente
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
         doNothing().when(clienteRepository).delete(cliente);
 
-        // Act
+        // Act: Ejecuta eliminación
         clienteService.eliminarCliente(1L);
 
-        // Assert
+        // Assert: Verifica eliminación
         verify(clienteRepository).findById(1L);
         verify(clienteRepository).delete(cliente);
     }
@@ -265,10 +265,10 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción al eliminar cliente no encontrado")
     void testEliminarClienteNoEncontrado() {
-        // Arrange
+        // Arrange: Simula cliente no existente
         when(clienteRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción al eliminar
         Exception exception = assertThrows(Exception.class, () -> {
             clienteService.eliminarCliente(1L);
         });
@@ -280,14 +280,14 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería obtener cliente por ID exitosamente")
     void testObtenerClientePorId() throws Exception {
-        // Arrange
+        // Arrange: Configura cliente existente
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
         when(clienteMapper.toDto(any(Cliente.class))).thenReturn(clienteDto);
 
-        // Act
+        // Act: Ejecuta búsqueda por ID
         ClienteDto resultado = clienteService.obtenerClientePorId(1L);
 
-        // Assert
+        // Assert: Verifica resultado
         assertNotNull(resultado);
         assertEquals("Juan Pérez", resultado.nombre());
         assertEquals(TipoCliente.NATURAL, resultado.tipoCliente());
@@ -298,10 +298,10 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando cliente no existe por ID")
     void testObtenerClientePorIdNoEncontrado() {
-        // Arrange
+        // Arrange: Simula cliente no encontrado
         when(clienteRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción
         Exception exception = assertThrows(Exception.class, () -> {
             clienteService.obtenerClientePorId(1L);
         });
@@ -313,14 +313,14 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería obtener cliente por cédula exitosamente")
     void testObtenerClientePorCedula() throws Exception {
-        // Arrange
+        // Arrange: Configura búsqueda por cédula
         when(clienteRepository.findByCedula("123456789")).thenReturn(Optional.of(cliente));
         when(clienteMapper.toDto(any(Cliente.class))).thenReturn(clienteDto);
 
-        // Act
+        // Act: Ejecuta búsqueda por cédula
         ClienteDto resultado = clienteService.obtenerClientePorCedula("123456789");
 
-        // Assert
+        // Assert: Verifica resultado
         assertNotNull(resultado);
         assertEquals("123456789", resultado.cedula());
         verify(clienteRepository).findByCedula("123456789");
@@ -329,10 +329,10 @@ class ClienteServiceImplTest {
     @Test
     @DisplayName("Debería lanzar excepción cuando cliente no existe por cédula")
     void testObtenerClientePorCedulaNoEncontrado() {
-        // Arrange
+        // Arrange: Simula cédula no existente
         when(clienteRepository.findByCedula("999999999")).thenReturn(Optional.empty());
 
-        // Act & Assert
+        // Act & Assert: Verifica excepción
         Exception exception = assertThrows(Exception.class, () -> {
             clienteService.obtenerClientePorCedula("999999999");
         });
