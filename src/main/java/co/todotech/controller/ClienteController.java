@@ -34,7 +34,7 @@ public class ClienteController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
-    public ResponseEntity<MensajeDto<ClienteDto>> actualizarCliente(@PathVariable Long id,
+    public ResponseEntity<MensajeDto<ClienteDto>> actualizarCliente(@PathVariable("id") Long id,
                                                                     @Valid @RequestBody ClienteDto dto) {
         try {
             ClienteDto clienteActualizado = clienteService.actualizarCliente(id, dto);
@@ -46,7 +46,7 @@ public class ClienteController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<MensajeDto<String>> eliminarCliente(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<String>> eliminarCliente(@PathVariable("id") Long id) {
         try {
             clienteService.eliminarCliente(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Cliente eliminado exitosamente"));
@@ -57,7 +57,7 @@ public class ClienteController {
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<ClienteDto>> obtenerClientePorId(@PathVariable Long id) {
+    public ResponseEntity<MensajeDto<ClienteDto>> obtenerClientePorId(@PathVariable("id") Long id) {
         try {
             ClienteDto dto = clienteService.obtenerClientePorId(id);
             return ResponseEntity.ok(new MensajeDto<>(false, "Cliente encontrado", dto));
@@ -68,7 +68,7 @@ public class ClienteController {
 
     @GetMapping("/cedula/{cedula}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<ClienteDto>> obtenerClientePorCedula(@PathVariable String cedula) {
+    public ResponseEntity<MensajeDto<ClienteDto>> obtenerClientePorCedula(@PathVariable("cedula") String cedula) {
         try {
             ClienteDto dto = clienteService.obtenerClientePorCedula(cedula);
             return ResponseEntity.ok(new MensajeDto<>(false, "Cliente encontrado por cédula", dto));
@@ -79,7 +79,7 @@ public class ClienteController {
 
     @GetMapping("/correo/{correo}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<ClienteDto>> obtenerClientePorCorreo(@PathVariable String correo) {
+    public ResponseEntity<MensajeDto<ClienteDto>> obtenerClientePorCorreo(@PathVariable("correo") String correo) {
         try {
             ClienteDto dto = clienteService.obtenerClientePorCorreo(correo);
             return ResponseEntity.ok(new MensajeDto<>(false, "Cliente encontrado por correo", dto));
@@ -90,7 +90,7 @@ public class ClienteController {
 
     @GetMapping("/tipo/{tipo}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<List<ClienteDto>>> obtenerClientesPorTipo(@PathVariable String tipo) {
+    public ResponseEntity<MensajeDto<List<ClienteDto>>> obtenerClientesPorTipo(@PathVariable("tipo") String tipo) {
         try {
             TipoCliente tipoCliente = TipoCliente.valueOf(tipo.toUpperCase());
             List<ClienteDto> lista = clienteService.obtenerClientesPorTipo(tipoCliente);
@@ -105,7 +105,7 @@ public class ClienteController {
 
     @GetMapping("/nombre/{nombre}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<List<ClienteDto>>> obtenerClientesPorNombre(@PathVariable String nombre) {
+    public ResponseEntity<MensajeDto<List<ClienteDto>>> obtenerClientesPorNombre(@PathVariable("nombre") String nombre) {
         try {
             List<ClienteDto> lista = clienteService.obtenerClientesPorNombre(nombre);
             return ResponseEntity.ok(new MensajeDto<>(false, "Clientes por nombre obtenidos", lista));
@@ -117,7 +117,7 @@ public class ClienteController {
     @GetMapping("/registrados-despues/{fecha}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MensajeDto<List<ClienteDto>>> obtenerClientesRegistradosDespuesDe(
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fecha) {
+            @PathVariable("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fecha) {
         try {
             List<ClienteDto> lista = clienteService.obtenerClientesRegistradosDespuesDe(fecha);
             return ResponseEntity.ok(new MensajeDto<>(false, "Clientes registrados después de la fecha obtenidos", lista));
@@ -141,7 +141,7 @@ public class ClienteController {
 
     @GetMapping("/contar/tipo/{tipo}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MensajeDto<Long>> contarClientesPorTipo(@PathVariable String tipo) {
+    public ResponseEntity<MensajeDto<Long>> contarClientesPorTipo(@PathVariable("tipo") String tipo) {
         try {
             TipoCliente tipoCliente = TipoCliente.valueOf(tipo.toUpperCase());
             long cantidad = clienteService.contarClientesPorTipo(tipoCliente);
@@ -153,7 +153,6 @@ public class ClienteController {
             return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), 0L));
         }
     }
-
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
