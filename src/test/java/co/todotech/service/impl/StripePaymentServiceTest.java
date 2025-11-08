@@ -30,7 +30,8 @@ class StripePaymentServiceTest {
     @InjectMocks
     private StripePaymentService stripePaymentService;
 
-    private final String testStripeKey = "sk_test_51SQ9bHRpZZ0VaxsYYaTxLhTgDxywCDKK5zhpxRm5Hbmkbexp7LoM7OYpvlnIqbfKtvUpa6NLwHRdfNGYAnHMuxew00d2CXQCyr";
+    // Clave de prueba genérica - NO usar claves reales en tests
+    private final String testStripeKey = "sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 
     @BeforeEach
     void setUp() {
