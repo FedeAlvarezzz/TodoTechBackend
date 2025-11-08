@@ -47,6 +47,9 @@ dependencies {
     // JWT Auth0
     implementation 'com.auth0:java-jwt:4.4.0'
 
+    // STRIPE - PASARELA DE PAGOS
+    implementation 'com.stripe:stripe-java:24.0.0'
+
     // MapStruct
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'

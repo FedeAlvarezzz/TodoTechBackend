@@ -38,7 +38,6 @@ public class GlobalExceptionHandler {
                 .body(new MensajeDto<>(true, ex.getMessage()));
     }
 
-
     // Manejadores para DetalleOrden
     @ExceptionHandler(DetalleOrdenNotFoundException.class)
     public ResponseEntity<MensajeDto<?>> handleDetalleOrdenNotFoundException(DetalleOrdenNotFoundException ex) {
@@ -75,6 +74,28 @@ public class GlobalExceptionHandler {
                 .body(new MensajeDto<>(true, ex.getMessage()));
     }
 
+    // 🔥 NUEVOS: Manejadores para excepciones de stock
+    @ExceptionHandler(StockInsufficientException.class)
+    public ResponseEntity<MensajeDto<?>> handleStockInsufficientException(StockInsufficientException ex) {
+        log.warn("Stock insuficiente: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MensajeDto<>(true, ex.getMessage()));
+    }
+
+    @ExceptionHandler(StockCriticalException.class)
+    public ResponseEntity<MensajeDto<?>> handleStockCriticalException(StockCriticalException ex) {
+        log.warn("Stock crítico: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MensajeDto<>(true, ex.getMessage()));
+    }
+
+    @ExceptionHandler(ProductoNoDisponibleException.class)
+    public ResponseEntity<MensajeDto<?>> handleProductoNoDisponibleException(ProductoNoDisponibleException ex) {
+        log.warn("Producto no disponible: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MensajeDto<>(true, ex.getMessage()));
+    }
+
     // Manejador para Orden (necesario para las validaciones)
     @ExceptionHandler(OrdenNotFoundException.class)
     public ResponseEntity<MensajeDto<?>> handleOrdenNotFoundException(OrdenNotFoundException ex) {
@@ -82,7 +103,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new MensajeDto<>(true, ex.getMessage()));
     }
-
 
     // Manejadores para Usuario
     @ExceptionHandler(UsuarioNotFoundException.class)

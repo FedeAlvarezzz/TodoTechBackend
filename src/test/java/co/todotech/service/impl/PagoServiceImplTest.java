@@ -63,7 +63,7 @@ class PagoServiceImplTest {
 
         metodoPago = MetodoPago.builder()
                 .id(1L)
-                .metodo(TipoMetodo.TARJETA)
+                .metodo(TipoMetodo.TARJETA_CREDITO) // CAMBIADO: TARJETA → TARJETA_CREDITO
                 .aprobacion(true)
                 .comision(2.5)
                 .build();
@@ -228,7 +228,7 @@ class PagoServiceImplTest {
         );
 
         Orden nuevaOrdenVenta = Orden.builder().id(2L).build();
-        MetodoPago nuevoMetodoPago = MetodoPago.builder().id(2L).build();
+        MetodoPago nuevoMetodoPago = MetodoPago.builder().id(2L).metodo(TipoMetodo.TARJETA_DEBITO).build(); // CAMBIADO
         Usuario nuevoUsuario = Usuario.builder().id(2L).build();
 
         when(pagoRepository.findById(1L)).thenReturn(Optional.of(pago));

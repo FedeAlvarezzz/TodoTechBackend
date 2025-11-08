@@ -120,7 +120,7 @@ public class OrdenController {
 
     // ✅ CORREGIDO: Agregar nombre explícito al @PathVariable
     @PatchMapping("/{id}/pagada")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR') or hasRole('CAJERO')")
     public ResponseEntity<MensajeDto<OrdenDto>> marcarComoPagada(@PathVariable("id") Long id) {
         try {
             OrdenDto ordenActualizada = ordenService.marcarComoPagada(id);
@@ -224,6 +224,17 @@ public class OrdenController {
         try {
             OrdenDto ordenActualizada = ordenService.actualizarTotalOrden(id, total);
             return ResponseEntity.ok(new MensajeDto<>(false, "Total de orden actualizado exitosamente", ordenActualizada));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/disponibles-pago")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('VENDEDOR') or hasRole('CAJERO')")
+    public ResponseEntity<MensajeDto<List<OrdenDto>>> obtenerOrdenesDisponiblesParaPago() {
+        try {
+            List<OrdenDto> ordenes = ordenService.obtenerOrdenesDisponiblesParaPago();
+            return ResponseEntity.ok(new MensajeDto<>(false, "Órdenes disponibles para pago obtenidas", ordenes));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
         }

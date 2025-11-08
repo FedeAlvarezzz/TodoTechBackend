@@ -3,6 +3,10 @@ package co.todotech.service;
 import co.todotech.model.dto.detalleorden.CreateDetalleOrdenDto;
 import co.todotech.model.dto.detalleorden.DetalleOrdenDto;
 import co.todotech.model.dto.detalleorden.EliminarDetalleRequest;
+import co.todotech.model.dto.detalleorden.validacion.BulkStockValidationRequest;
+import co.todotech.model.dto.detalleorden.validacion.BulkValidationResultDto;
+import co.todotech.model.dto.detalleorden.validacion.StockValidationRequest;
+import co.todotech.model.dto.detalleorden.validacion.ValidationResultDto;
 
 import java.util.List;
 
@@ -23,4 +27,10 @@ public interface DetalleOrdenService {
     void eliminarDetallePorProductoYOrden(EliminarDetalleRequest request);
 
     void validarStockDisponible(Long productoId, Integer cantidadRequerida);
+
+    ValidationResultDto validarStockParaDetalle(StockValidationRequest request);
+    BulkValidationResultDto validarStockMultiple(BulkStockValidationRequest request);
+    List<ValidationResultDto> obtenerProductosStockCritico();
+    ValidationResultDto obtenerStockDisponible(Long productoId);
+
 }

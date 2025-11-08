@@ -32,4 +32,10 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     // Método para búsqueda por nombre exacto (case insensitive)
     Optional<Producto> findByNombreIgnoreCase(String nombre);
+
+    @Query("SELECT p FROM Producto p WHERE p.stock <= :stockCritico AND p.estado = :estado")
+    List<Producto> findByStockLessThanEqualAndEstado(
+            @Param("stockCritico") int stockCritico,
+            @Param("estado") EstadoProducto estado);
+
 }

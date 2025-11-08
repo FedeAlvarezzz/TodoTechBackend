@@ -4,6 +4,10 @@ import co.todotech.model.dto.MensajeDto;
 import co.todotech.model.dto.detalleorden.CreateDetalleOrdenDto;
 import co.todotech.model.dto.detalleorden.DetalleOrdenDto;
 import co.todotech.model.dto.detalleorden.EliminarDetalleRequest;
+import co.todotech.model.dto.detalleorden.validacion.BulkStockValidationRequest;
+import co.todotech.model.dto.detalleorden.validacion.BulkValidationResultDto;
+import co.todotech.model.dto.detalleorden.validacion.StockValidationRequest;
+import co.todotech.model.dto.detalleorden.validacion.ValidationResultDto;
 import co.todotech.service.DetalleOrdenService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -118,6 +122,56 @@ public class DetalleOrdenController {
             return ResponseEntity.ok(new MensajeDto<>(false, "Stock disponible para la cantidad solicitada"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage()));
+        }
+    }
+
+
+    // Agregar estos métodos al DetalleOrdenController
+
+    @PostMapping("/validar-stock")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MensajeDto<ValidationResultDto>> validarStockParaDetalle(
+            @Valid @RequestBody StockValidationRequest request) {
+        try {
+            ValidationResultDto resultado = detalleOrdenService.validarStockParaDetalle(request);
+            return ResponseEntity.ok(new MensajeDto<>(false, "Validación de stock completada", resultado));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/validar-stock-multiple")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MensajeDto<BulkValidationResultDto>> validarStockMultiple(
+            @Valid @RequestBody BulkStockValidationRequest request) {
+        try {
+            BulkValidationResultDto resultado = detalleOrdenService.validarStockMultiple(request);
+            return ResponseEntity.ok(new MensajeDto<>(false, "Validación múltiple de stock completada", resultado));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/stock-critico")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MensajeDto<List<ValidationResultDto>>> obtenerProductosStockCritico() {
+        try {
+            List<ValidationResultDto> productosCriticos = detalleOrdenService.obtenerProductosStockCritico();
+            return ResponseEntity.ok(new MensajeDto<>(false, "Productos con stock crítico obtenidos", productosCriticos));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/stock-disponible/{productoId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MensajeDto<ValidationResultDto>> obtenerStockDisponible(
+            @PathVariable("productoId") Long productoId) {
+        try {
+            ValidationResultDto resultado = detalleOrdenService.obtenerStockDisponible(productoId);
+            return ResponseEntity.ok(new MensajeDto<>(false, "Stock disponible obtenido", resultado));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MensajeDto<>(true, e.getMessage(), null));
         }
     }
 }

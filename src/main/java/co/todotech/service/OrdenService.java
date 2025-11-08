@@ -44,4 +44,6 @@ public interface OrdenService {
     OrdenDto marcarComoDisponibleParaPago(Long id);
 
     OrdenDto actualizarTotalOrden(Long ordenId, Double nuevoTotal);
+
+    List<OrdenDto> obtenerOrdenesDisponiblesParaPago();
 }

@@ -435,4 +435,15 @@ public class OrdenServiceImpl implements OrdenService {
 
         return ordenMapper.toDto(ordenActualizada);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrdenDto> obtenerOrdenesDisponiblesParaPago() {
+        log.info("Obteniendo órdenes disponibles para pago");
+
+        return ordenRepository.findByEstado(EstadoOrden.DISPONIBLEPARAPAGO)
+                .stream()
+                .map(ordenMapper::toDto)
+                .collect(Collectors.toList());
+    }
 }

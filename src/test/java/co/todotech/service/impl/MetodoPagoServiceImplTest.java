@@ -40,7 +40,7 @@ class MetodoPagoServiceImplTest {
     void setUp() {
         // Configurar datos de prueba comunes
         metodoPagoDto = new MetodoPagoDto(
-                TipoMetodo.TARJETA,
+                TipoMetodo.TARJETA_CREDITO, // CAMBIADO: TARJETA → TARJETA_CREDITO
                 "Pago con tarjeta de crédito",
                 true,
                 2.5
@@ -48,7 +48,7 @@ class MetodoPagoServiceImplTest {
 
         metodoPago = MetodoPago.builder()
                 .id(1L)
-                .metodo(TipoMetodo.TARJETA)
+                .metodo(TipoMetodo.TARJETA_CREDITO) // CAMBIADO: TARJETA → TARJETA_CREDITO
                 .descripcion("Pago con tarjeta de crédito")
                 .aprobacion(true)
                 .comision(2.5)
@@ -69,7 +69,7 @@ class MetodoPagoServiceImplTest {
 
         // Assert
         assertNotNull(resultado);
-        verify(metodoPagoRepository).existsByMetodo(TipoMetodo.TARJETA);
+        verify(metodoPagoRepository).existsByMetodo(TipoMetodo.TARJETA_CREDITO); // CAMBIADO
         verify(metodoPagoMapper).toEntity(metodoPagoDto);
         verify(metodoPagoRepository).save(metodoPago);
         verify(metodoPagoMapper).toDto(metodoPago);
@@ -86,7 +86,7 @@ class MetodoPagoServiceImplTest {
             metodoPagoService.crearMetodoPago(metodoPagoDto);
         });
 
-        assertEquals("Ya existe un método de pago con el tipo: TARJETA", exception.getMessage());
+        assertEquals("Ya existe un método de pago con el tipo: TARJETA_CREDITO", exception.getMessage()); // CAMBIADO
         verify(metodoPagoRepository, never()).save(any(MetodoPago.class));
     }
 
@@ -95,7 +95,7 @@ class MetodoPagoServiceImplTest {
     void testActualizarMetodoPagoExitoso() throws Exception {
         // Arrange
         MetodoPagoDto dtoActualizado = new MetodoPagoDto(
-                TipoMetodo.TARJETA_DEBITO,
+                TipoMetodo.TARJETA_DEBITO, // CAMBIADO: TARJETA_DEBITO en lugar de TARJETA_DEBITO
                 "Pago con tarjeta de débito",
                 true,
                 1.5
@@ -112,7 +112,7 @@ class MetodoPagoServiceImplTest {
         // Assert
         assertNotNull(resultado);
         verify(metodoPagoRepository).findById(1L);
-        verify(metodoPagoRepository).existsByMetodo(TipoMetodo.TARJETA_DEBITO);
+        verify(metodoPagoRepository).existsByMetodo(TipoMetodo.TARJETA_DEBITO); // CAMBIADO
         verify(metodoPagoMapper).updateMetodoPagoFromDto(dtoActualizado, metodoPago);
         verify(metodoPagoRepository).save(metodoPago);
     }
@@ -122,7 +122,7 @@ class MetodoPagoServiceImplTest {
     void testActualizarMetodoPagoMismoTipo() throws Exception {
         // Arrange
         MetodoPagoDto dtoMismoTipo = new MetodoPagoDto(
-                TipoMetodo.TARJETA, // Mismo tipo
+                TipoMetodo.TARJETA_CREDITO, // Mismo tipo (CAMBIADO)
                 "Descripción actualizada",
                 true,
                 2.0
@@ -222,7 +222,7 @@ class MetodoPagoServiceImplTest {
 
         // Assert
         assertNotNull(resultado);
-        assertEquals(TipoMetodo.TARJETA, resultado.metodo());
+        assertEquals(TipoMetodo.TARJETA_CREDITO, resultado.metodo()); // CAMBIADO
         verify(metodoPagoRepository).findById(1L);
         verify(metodoPagoMapper).toDto(metodoPago);
     }
@@ -247,15 +247,15 @@ class MetodoPagoServiceImplTest {
     void testObtenerMetodosPagoPorTipo() {
         // Arrange
         List<MetodoPago> metodosPago = Arrays.asList(metodoPago);
-        when(metodoPagoRepository.findByMetodo(TipoMetodo.TARJETA)).thenReturn(metodosPago);
+        when(metodoPagoRepository.findByMetodo(TipoMetodo.TARJETA_CREDITO)).thenReturn(metodosPago); // CAMBIADO
         when(metodoPagoMapper.toDto(any(MetodoPago.class))).thenReturn(metodoPagoDto);
 
         // Act
-        List<MetodoPagoDto> resultados = metodoPagoService.obtenerMetodosPagoPorTipo(TipoMetodo.TARJETA);
+        List<MetodoPagoDto> resultados = metodoPagoService.obtenerMetodosPagoPorTipo(TipoMetodo.TARJETA_CREDITO); // CAMBIADO
 
         // Assert
         assertEquals(1, resultados.size());
-        verify(metodoPagoRepository).findByMetodo(TipoMetodo.TARJETA);
+        verify(metodoPagoRepository).findByMetodo(TipoMetodo.TARJETA_CREDITO); // CAMBIADO
     }
 
     @Test
@@ -320,7 +320,7 @@ class MetodoPagoServiceImplTest {
 
         MetodoPago metodoCredito = MetodoPago.builder()
                 .id(3L)
-                .metodo(TipoMetodo.CREDITO)
+                .metodo(TipoMetodo.TARJETA_CREDITO) // CAMBIADO: CREDITO → TARJETA_CREDITO
                 .descripcion("Pago a crédito")
                 .aprobacion(true)
                 .comision(3.0)
@@ -333,7 +333,7 @@ class MetodoPagoServiceImplTest {
                 new MetodoPagoDto(TipoMetodo.EFECTIVO, "Pago en efectivo", true, 0.0)
         );
         when(metodoPagoMapper.toDto(metodoCredito)).thenReturn(
-                new MetodoPagoDto(TipoMetodo.CREDITO, "Pago a crédito", true, 3.0)
+                new MetodoPagoDto(TipoMetodo.TARJETA_CREDITO, "Pago a crédito", true, 3.0) // CAMBIADO
         );
 
         // Act
@@ -457,7 +457,7 @@ class MetodoPagoServiceImplTest {
     void testCrearMetodoPagoNoAprobado() throws Exception {
         // Arrange
         MetodoPagoDto dtoNoAprobado = new MetodoPagoDto(
-                TipoMetodo.CREDITO,
+                TipoMetodo.TARJETA_CREDITO, // CAMBIADO: CREDITO → TARJETA_CREDITO
                 "Pago a crédito pendiente",
                 false,
                 5.0
@@ -465,13 +465,13 @@ class MetodoPagoServiceImplTest {
 
         MetodoPago metodoNoAprobado = MetodoPago.builder()
                 .id(4L)
-                .metodo(TipoMetodo.CREDITO)
+                .metodo(TipoMetodo.TARJETA_CREDITO) // CAMBIADO: CREDITO → TARJETA_CREDITO
                 .descripcion("Pago a crédito pendiente")
                 .aprobacion(false)
                 .comision(5.0)
                 .build();
 
-        when(metodoPagoRepository.existsByMetodo(TipoMetodo.CREDITO)).thenReturn(false);
+        when(metodoPagoRepository.existsByMetodo(TipoMetodo.TARJETA_CREDITO)).thenReturn(false); // CAMBIADO
         when(metodoPagoMapper.toEntity(dtoNoAprobado)).thenReturn(metodoNoAprobado);
         when(metodoPagoRepository.save(metodoNoAprobado)).thenReturn(metodoNoAprobado);
         when(metodoPagoMapper.toDto(metodoNoAprobado)).thenReturn(dtoNoAprobado);
@@ -482,6 +482,6 @@ class MetodoPagoServiceImplTest {
         // Assert
         assertNotNull(resultado);
         assertFalse(resultado.aprobacion());
-        verify(metodoPagoRepository).existsByMetodo(TipoMetodo.CREDITO);
+        verify(metodoPagoRepository).existsByMetodo(TipoMetodo.TARJETA_CREDITO); // CAMBIADO
     }
 }

@@ -2,8 +2,13 @@ package co.todotech.model.enums;
 
 public enum TipoMetodo {
     EFECTIVO,
-    TARJETA,
-    CREDITO,
+    TARJETA_CREDITO,
     TARJETA_DEBITO,
-    REDCOMPRA
+    TRANSFERENCIA,
+    REDCOMPRA,
+    // Nuevos métodos para pasarelas
+    STRIPE,
+    PAYPAL,
+    MERCADOPAGO,
+    WOMPI
 }
