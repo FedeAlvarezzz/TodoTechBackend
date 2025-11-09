@@ -44,7 +44,11 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/usuarios/login",
                                 "/usuarios/recordar-contrasena",
-                                "/productos/publicos/**"  // ✅ TODOS los endpoints públicos de productos
+                                "/productos/publicos/**",
+                                "/stripe/**",
+                                "/paypal/**",
+                                "/health",     // ✅ Agregar health check
+                                "/"           // ✅ Agregar home
                         ).permitAll()
 
                         // 🔐 ENDPOINTS QUE REQUIEREN AUTENTICACIÓN BÁSICA
@@ -66,14 +70,41 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
+        // ✅ SOLO ORÍGENES EXTERNOS (frontends que consumen este backend)
         configuration.setAllowedOrigins(Arrays.asList(
-                "https://todotechshop.web.app",
-                "http://localhost:4200"
+                "https://todotechshop.web.app",  // Tu frontend en Firebase
+                "http://localhost:4200",         // Desarrollo local Angular
+                "https://localhost:4200"         // Desarrollo local Angular con HTTPS
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
-        configuration.setExposedHeaders(Arrays.asList("x-auth-token"));
+
+        // ✅ MÉTODOS HTTP PERMITIDOS
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
+
+        // ✅ HEADERS PERMITIDOS
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-Auth-Token",
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers"
+        ));
+
+        // ✅ HEADERS EXPUESTOS
+        configuration.setExposedHeaders(Arrays.asList(
+                "X-Auth-Token",
+                "Authorization",
+                "Content-Disposition"
+        ));
+
+        // ✅ PERMITIR CREDENCIALES
         configuration.setAllowCredentials(true);
+
+        // ✅ TIEMPO DE VIDA DEL PRE-FLIGHT (OPTIONS)
+        configuration.setMaxAge(3600L); // 1 hora
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
