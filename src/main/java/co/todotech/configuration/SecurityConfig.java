@@ -47,8 +47,8 @@ public class SecurityConfig {
                                 "/productos/publicos/**",
                                 "/stripe/**",
                                 "/paypal/**",
-                                "/health",     // ✅ Agregar health check
-                                "/"           // ✅ Agregar home
+                                "/health",
+                                "/"
                         ).permitAll()
 
                         // 🔐 ENDPOINTS QUE REQUIEREN AUTENTICACIÓN BÁSICA
@@ -71,11 +71,13 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // ✅ SOLO ORÍGENES EXTERNOS (frontends que consumen este backend)
+        // ✅ ORÍGENES PERMITIDOS - AGREGADA LA URL DE CLOUDFRONT
         configuration.setAllowedOrigins(Arrays.asList(
-                "https://todotechshop.web.app",  // Tu frontend en Firebase
-                "http://localhost:4200",         // Desarrollo local Angular
-                "https://localhost:4200"         // Desarrollo local Angular con HTTPS
+                "https://todotechshopfrontend.web.app",  // Firebase
+                "https://d2jctboz5xbevf.cloudfront.net", // ← NUEVO: CloudFront
+                "http://localhost:4200",                 // Desarrollo local
+                "https://localhost:4200",                // Desarrollo local HTTPS
+                "http://todotech-frontend.s3-website.us-east-2.amazonaws.com"
         ));
 
         // ✅ MÉTODOS HTTP PERMITIDOS
